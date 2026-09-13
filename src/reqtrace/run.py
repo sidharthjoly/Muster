@@ -54,9 +54,12 @@ CONCURRENCY = 4
 # exists to cover. 25 gives that a third of headroom instead.
 #
 # The ceiling on this number is the workflow: four boards can start moments
-# before `--deadline 140` and each run the full timeout, so 140 + 25 = 165
-# against a 210-minute job limit, leaving 45 minutes for the export and the
-# publish. Raising the deadline and this together will run out of room.
+# before `--deadline 270` and each run the full timeout, so 270 + 25 = 295
+# against a 350-minute job limit -- and the chunk they belong to still has to
+# be written after that. Measured once, the whole overshoot past the deadline
+# was 48 minutes, which puts a 270 deadline near 320 and leaves about 30
+# minutes for the export and the publish. Raising the deadline and this
+# together will run out of room.
 BOARD_TIMEOUT = 25 * 60
 
 # How many finished boards may go unwritten before the sweep stops to write.
@@ -91,7 +94,7 @@ BOARD_TIMEOUT = 25 * 60
 # On the never-attempted Workday backlog that bound will bind rather than
 # stay theoretical: 2,000- and 4,000-job tenants are common there, not
 # outliers, so two or three chunks stalling on a 25-minute board would spend
-# most of a 140-minute deadline waiting on four-board wavefronts. If the
+# a large part of the deadline waiting on four-board wavefronts. If the
 # drain rate turns out to be the problem, this is the number to revisit --
 # but measure it across several runs first, because the boards are swept in
 # `stalest` order and the early chunks are not the cheap ones.
