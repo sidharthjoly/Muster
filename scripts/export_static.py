@@ -11,9 +11,19 @@ plus JSON.
     python scripts/export_static.py --serve      # build, then serve it locally
     python scripts/export_static.py --publish    # build, push to the gh-pages branch
 
-**Australian open roles only.** The whole index is 51k rows and 28MB of JSON,
-which is not a page, it is a download. AU open roles are 3,356 rows and ~3MB,
-which gzips to well under a megabyte — and AU is what the index is for.
+**Australian open roles only.** The whole index is 286k open roles, which at
+this row size is hundreds of megabytes of JSON: not a page, a download. AU open
+roles are 8,852 of them, and AU is what the index is for. That slice is 10.2MB
+of JSON, 2.1MB gzipped, fetched whole on load and filtered in the browser.
+
+Most of that is `kw`, the per-role vocabulary, at 56% of the file — and it is
+not slack. `search.keywords` already dedupes every row and drops any token more
+than 4% of the corpus carries. Tightening that cap is the obvious saving and it
+is a trap: 4% of 8,852 roles is 354, and an absolute cap at the 137 that
+docstring was calibrated to back at 3,400 roles would drop `sql` (291 roles) and
+`kubernetes` (180). `python` is already above the line and survives on its title
+alone. The cap is at its recall limit, so this file shrinks by dropping columns,
+never by pruning vocabulary.
 
 A static export is a snapshot: it is stale the moment the next sweep lands.
 Both pages therefore carry the export timestamp, and `/runs` says outright that
@@ -54,16 +64,28 @@ CNAME = "reqtrace.sidharthjoly.com"
 JOBS_SQL = """
 SELECT j.ats_vendor, j.board_token, j.external_id, j.title,
        COALESCE(c.name, j.board_token) AS company,
-       j.location_city, j.location_country, j.location_raw, j.remote_type,
-       j.salary_min, j.salary_max, j.salary_currency, j.salary_period,
-       j.department, j.seniority, j.apply_url,
-       j.posted_at, j.first_seen_at,
+       j.location_city, j.location_raw, j.remote_type,
+       j.salary_min, j.salary_max, j.salary_currency,
+       j.apply_url, j.posted_at, j.first_seen_at,
        COALESCE(j.description_text, '') AS body
 FROM jobs j
 LEFT JOIN companies c
   ON c.ats_vendor = j.ats_vendor AND c.board_token = j.board_token
 WHERE j.closed_at IS NULL AND j.location_country = 'AU'
 """
+
+
+def _dsn() -> str | None:
+    """The Postgres DSN to export from, direct endpoint first.
+
+    Neon hands out a pooled URL and a direct one. The pooled URL is right for a
+    web process and wrong for this: the export is a single multi-minute
+    analytical read, and the pooler dropped the session mid-query while psycopg
+    still held an ESTABLISHED socket. That is not an error, it is a process
+    waiting for a reply that is never coming — seen once as a 27-minute hang at
+    0.3 seconds of CPU, with `pg_stat_activity` showing no backend at all.
+    """
+    return os.environ.get("DATABASE_URL_UNPOOLED") or os.environ.get("DATABASE_URL")
 
 
 def _connect(db: Path):
@@ -73,14 +95,19 @@ def _connect(db: Path):
     SQLite ones byte for byte — SQLite stores UTC strings, while `to_char` and
     psycopg would otherwise render whatever the session timezone happens to be,
     and an Actions runner's timezone is not the laptop's."""
-    dsn = os.environ.get("DATABASE_URL")
+    dsn = _dsn()
     if dsn:
         import psycopg
 
         # Tuple rows, not dict_row on the connection: `search.stats` reads
         # `fetchone()[0]` positionally, and runs.py opens its own dict cursor
         # where it needs one. Row shape stays a per-query decision.
-        conn = psycopg.connect(dsn)
+        # Keepalives so a dropped session surfaces as an error rather than a
+        # hang. This runs unattended from launchd, where a process blocked on a
+        # half-open socket waits until someone notices the site went stale.
+        conn = psycopg.connect(dsn, connect_timeout=15, keepalives=1,
+                               keepalives_idle=30, keepalives_interval=10,
+                               keepalives_count=3)
         conn.execute("SET TIME ZONE 'UTC'")
         return conn, "postgres"
     conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
@@ -93,6 +120,27 @@ def _iso(o):
     where SQLite hands back strings, and `str(datetime)` uses a space, which is
     not ISO and which the pages would have to paper over."""
     return o.isoformat() if isinstance(o, (datetime, date)) else str(o)
+
+
+def _slim(job: dict) -> dict:
+    """Drop what the page will never read from this row.
+
+    Two columns are fallbacks the page only reaches for when its first choice is
+    missing — `location_raw` behind `location_city`, `first_seen_at` behind
+    `posted_at` — so on the rows that have the first choice the second is bytes
+    nobody parses. Null keys go with them: JS reads a missing key as `undefined`,
+    which is falsy in exactly the places the page already tests for falsy, and
+    8,794 of 8,852 roles publish no salary at all.
+
+    Worth 17% of the raw file and about 5% gzipped. The wire cost barely moves
+    because gzip already folds a repeated `"salary_min":null` down to nothing;
+    what this buys is parse time and browser memory, not bandwidth.
+    """
+    if job.get("location_city"):
+        job.pop("location_raw", None)
+    if job.get("posted_at"):
+        job.pop("first_seen_at", None)
+    return {k: v for k, v in job.items() if v is not None and v != ""}
 
 
 def build(db: Path) -> dict:
@@ -111,6 +159,7 @@ def build(db: Path) -> dict:
     # prefix could not do that — ads name their tools at the end.
     for job, kw in zip(jobs, search.keywords([j.pop("body") for j in jobs])):
         job["kw"] = kw
+    jobs = [_slim(j) for j in jobs]
 
     health = runs.health(conn, backend=backend)
     stats = search.stats(conn)
@@ -228,7 +277,7 @@ def main() -> int:
                     help="publish even with uncommitted work in the tree")
     args = ap.parse_args()
 
-    if not os.environ.get("DATABASE_URL") and not args.db.exists():
+    if not _dsn() and not args.db.exists():
         print(f"no index at {args.db} — run an ingest first, or set DATABASE_URL",
               file=sys.stderr)
         return 2
