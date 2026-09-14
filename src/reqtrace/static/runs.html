@@ -4,299 +4,312 @@
 <title>ReqTrace · ingest health</title>
 <style>
   :root {
-    /* Dark industrial console. The palette is deliberately monochrome, which
-       settles an old hazard on this page: green/amber/red is the canonical
-       colourblind trap, so board state is carried by a word plus a fill weight
-       (solid / muted / outline) and never by hue. */
-    --bg:#08080a; --panel:#0b0b0d; --well:#0e0e11; --track:#15151a;
-    --line:#1e1e22; --line-2:#26262a; --line-3:#33333a;
-    --ink:#f2f2f3; --ink-2:#e4e4e6; --dim:#c9c9cd; --muted:#a8a8ad;
-    --faint:#8a8a8f; --fainter:#7a7a7d;
-    --hover:#101014; --active:#141418;
-    --cond:'Barlow Condensed','Barlow SemiCondensed',ui-sans-serif,system-ui,-apple-system,sans-serif;
-    --body:'Barlow',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    /* The search page's palette, lifted unchanged: warm sand ground, one
+       burnt-orange accent and one olive. This page was a dark console, on the
+       argument that the visual break was honest — it said you had left the
+       product. It read as a different product instead, so the break is gone
+       and the room is the same one.
+
+       What survives the repaint is the thing the monochrome was actually for:
+       green/amber/red is the canonical colourblind trap, so board state is
+       still a word plus a fill weight (solid / muted / outline) and hue never
+       carries it. The two hues here count openings against closures on the
+       churn chart, exactly as they do on the search page, where the pair is
+       labelled and ordered rather than relied on. */
+    --ground:#e6dcc8; --card:#f5ead8; --sunk:#ebddc5;
+    --ink:#201e1d;
+    --ink-70:rgba(32,30,29,.7); --ink-55:rgba(32,30,29,.55);
+    --ink-45:rgba(32,30,29,.45); --ink-20:rgba(32,30,29,.2);
+    --ink-12:rgba(32,30,29,.12); --ink-07:rgba(32,30,29,.07);
+    --accent:#c67139; --accent-deep:#b2622d; --accent-ink:#8c491a;
+    --olive:#8fa073; --olive-deep:#7a8a5e; --olive-pale:#ccdbb2;
+    --shadow:0 3px 10px rgba(46,43,37,.16);
+    /* One family, and no webfont: this page also ships as a static export that
+       has to work as a file opened from disk. */
+    --sans:Figtree,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    /* Board tokens, vendor errors and the raw log are machine strings and stay
+       in a machine face. The search page has no mono content; that is not a
+       reason to set a board token in prose. */
     --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
   }
   * { box-sizing:border-box; }
-  html, body { margin:0; background:var(--bg); }
-  body { color:var(--ink); font:14px/1.55 var(--body); }
-  a { color:var(--ink); text-decoration:none; }
-  ::selection { background:var(--ink); color:var(--bg); }
-  *:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font:14px/1.6 var(--sans); -webkit-font-smoothing:antialiased; }
+  a { color:inherit; text-decoration:none; }
+  ::selection { background:rgba(198,113,57,.25); }
+  :focus-visible { outline:2px solid var(--accent-ink); outline-offset:3px;
+    border-radius:6px; }
 
-  .app { min-height:100vh; display:grid; grid-template-columns:minmax(0,232px) minmax(0,1fr); }
+  .page { max-width:1000px; margin:0 auto; padding:26px 20px 40px;
+    display:flex; flex-direction:column; gap:18px; }
+  .card { background:var(--card); border:1px solid rgba(32,30,29,.1);
+    border-radius:28px; box-shadow:var(--shadow); overflow:hidden; }
 
-  /* ---- sidebar ---- */
-  .side { border-right:1px solid var(--line); background:var(--panel);
-    display:flex; flex-direction:column; position:sticky; top:0;
-    align-self:start; height:100vh; overflow-y:auto; }
-  .brand { padding:20px 18px 16px; border-bottom:1px solid var(--line); }
-  .brand .mark { display:flex; align-items:center; gap:9px; }
-  .brand .name { font-family:var(--cond); font-weight:600; font-size:19px;
-    letter-spacing:.14em; text-transform:uppercase; line-height:1; }
-  .brand .sub { margin-top:7px; font-size:10px; letter-spacing:.16em;
-    text-transform:uppercase; color:var(--muted); font-variant-numeric:tabular-nums; }
-  .nav { padding:14px 10px; display:flex; flex-direction:column; gap:2px; }
-  .nav .h { padding:0 8px 8px; font-size:10px; letter-spacing:.16em;
-    text-transform:uppercase; color:var(--faint); }
-  .nav a { display:flex; align-items:center; gap:10px; padding:8px 9px;
-    border:1px solid transparent; color:var(--muted); font-family:var(--cond);
-    font-weight:600; font-size:14px; letter-spacing:.09em; text-transform:uppercase; }
-  .nav a:hover { background:var(--active); color:#fff; }
-  .nav a[aria-current=page] { background:var(--active); border-color:var(--line-3); color:#fff; }
-  .nav a .ico { display:flex; width:16px; height:16px; flex:none; }
-  .nav a .n { margin-left:auto; font-family:var(--body); font-weight:400; font-size:11px;
-    letter-spacing:0; color:var(--muted); font-variant-numeric:tabular-nums; }
-  .sweep { margin-top:auto; padding:16px 18px; border-top:1px solid var(--line);
-    display:flex; flex-direction:column; gap:10px; }
-  .sweep .h { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); }
-  .sweep .state { display:flex; align-items:center; gap:8px; font-family:var(--cond);
-    font-weight:600; letter-spacing:.09em; text-transform:uppercase; font-size:13px; }
-  .sweep .state i { width:6px; height:6px; background:var(--ink); flex:none; }
-  .sweep .state.is-degraded i { background:var(--muted); }
-  .sweep .state.is-bad i { background:transparent; border:1px solid var(--ink); }
-  .sweep .when { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; line-height:1.5; }
-  .spark { display:flex; gap:1px; height:22px; align-items:flex-end; }
-  .spark span { flex:1; background:var(--ink); min-height:2px; }
-  .spark span.last { background:var(--muted); }
-  .sweep .cap { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); }
-
-  /* ---- header ---- */
-  .col { min-width:0; display:flex; flex-direction:column; }
-  header { border-bottom:1px solid var(--line); background:var(--panel);
-    position:sticky; top:0; z-index:5; }
-  .topbar { display:flex; align-items:center; gap:16px; padding:0 20px; min-height:48px;
+  /* ---- masthead ---- */
+  .top { display:flex; align-items:center; gap:13px; padding:26px 34px 0;
     flex-wrap:wrap; }
-  .topbar .t { font-family:var(--cond); font-weight:600; font-size:15px;
-    letter-spacing:.12em; text-transform:uppercase; }
-  .vr { width:1px; height:16px; background:var(--line-2); }
-  .topbar .s { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
-  .topbar .right { margin-left:auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
-  .stamp { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; letter-spacing:.06em; }
-  .mode { display:flex; align-items:center; gap:7px; padding:4px 9px; border:1px solid var(--line-2); }
-  .mode i { width:5px; height:5px; background:var(--ink); }
-  .mode span { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); }
+  .mark { font-size:22px; font-weight:700; letter-spacing:-.03em; line-height:1; }
+  .mark em { font-style:normal; color:var(--accent-deep); }
+  .scope { font-size:12px; color:var(--ink-55); }
+  .swept { margin-left:auto; display:flex; align-items:center; gap:8px;
+    font-size:11.5px; color:var(--ink-55); }
+  .swept i { width:7px; height:7px; border-radius:50%; background:var(--olive-deep); }
+  .swept.cold i { background:#b06a4a; }
+  .back { display:inline-flex; align-items:center; gap:7px; height:31px; padding:0 14px;
+    border:1px solid var(--ink-20); border-radius:999px; font-size:12.5px;
+    color:var(--ink); transition:background .2s, border-color .2s; }
+  .back:hover { background:rgba(32,30,29,.06); border-color:var(--ink-45); }
 
-  /* ---- main ---- */
-  main { padding:20px; display:flex; flex-direction:column; gap:20px; min-width:0; }
-  .panel { border:1px solid var(--line); background:var(--panel); min-width:0; }
-  .panel-h { padding:11px 16px; border-bottom:1px solid var(--line); font-size:10px;
-    letter-spacing:.16em; text-transform:uppercase; color:var(--muted);
-    display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
-  .panel-h .note { font-size:11px; color:var(--faint); letter-spacing:.06em; text-transform:none; }
-  .panel-h .r { margin-left:auto; font-size:10px; letter-spacing:.14em; color:var(--faint); }
+  /* ---- freshness: the one number this page exists to answer ---- */
+  .hero { display:flex; flex-wrap:wrap; gap:18px 40px; align-items:flex-end;
+    padding:24px 34px 0; }
+  .hero .k, .railhead { font-size:10.5px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--ink-45); }
+  .hero .big { font-size:42px; font-weight:700; letter-spacing:-.035em; line-height:.95;
+    font-variant-numeric:tabular-nums; margin-top:9px; }
+  .hero .when { font-size:12px; line-height:1.6; color:var(--ink-55); margin-top:9px; }
+  .hero .right { margin-left:auto; display:flex; flex-direction:column; gap:10px;
+    align-items:flex-start; }
+  .hero .exp { font-size:11.5px; line-height:1.6; color:var(--ink-55); max-width:34ch;
+    text-wrap:pretty; }
+  /* Word first, dot second: solid, muted, outline — never a hue. */
+  .badge { display:inline-flex; align-items:center; gap:9px; height:32px; padding:0 15px;
+    border:1px solid var(--ink-20); border-radius:999px; font-size:12.5px; font-weight:600; }
+  .badge i { width:8px; height:8px; border-radius:50%; background:var(--ink); }
+  .badge.is-degraded i { background:var(--ink-45); }
+  .badge.is-bad i { background:transparent; border:1.5px solid var(--ink); }
 
-  /* Freshness is the one number this page exists to answer. */
-  .hero { border:1px solid var(--line); background:var(--panel); padding:20px;
-    display:flex; flex-wrap:wrap; gap:14px 40px; align-items:flex-end; }
-  .hero .k { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
-  .hero .big { font-family:var(--cond); font-weight:600; font-size:56px; line-height:1;
-    letter-spacing:-.02em; font-variant-numeric:tabular-nums; margin-top:6px; }
-  .hero .when { font-size:12px; color:var(--faint); margin-top:6px; font-variant-numeric:tabular-nums; }
-  .hero .right { margin-left:auto; display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
-  .badge { display:flex; align-items:center; gap:9px; border:1px solid var(--ink); padding:6px 12px;
-    font-family:var(--cond); font-weight:600; font-size:14px; letter-spacing:.14em;
-    text-transform:uppercase; }
-  .badge i { width:6px; height:6px; background:var(--ink); }
-  .badge.is-degraded { border-color:var(--muted); }
-  .badge.is-degraded i { background:var(--muted); }
-  .badge.is-bad i { background:transparent; border:1px solid var(--ink); }
-  .hero .exp { font-size:11px; color:var(--muted); max-width:32ch; text-wrap:pretty; }
+  /* ---- the sweep's own pulse ---- */
+  .pulse { padding:22px 34px 0; }
+  .pulse[hidden] { display:none; }
+  .railhead { margin-bottom:11px; }
+  .well { background:var(--sunk); border-radius:24px; padding:13px 12px 11px; }
+  .spark { display:flex; gap:4px; height:42px; align-items:flex-end; }
+  .spark span { flex:1; min-height:3px; border-radius:5px 5px 0 0;
+    background:var(--olive); }
+  .spark span.last { background:var(--accent); }
+  .cap { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-45); margin-top:10px; }
 
-  .tiles { display:grid; gap:1px; background:var(--line); border:1px solid var(--line);
-    grid-template-columns:repeat(3,minmax(0,1fr)); }
-  .tile { position:relative; background:var(--panel); padding:14px 16px 15px; }
-  .tile .k { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
-  .tile .v { font-family:var(--cond); font-weight:600; font-size:34px; line-height:1.05;
-    letter-spacing:-.01em; font-variant-numeric:tabular-nums; margin-top:6px; }
-  .tile .v.quiet { color:var(--faint); }
-  .tile .sub { font-size:11px; color:var(--faint); margin-top:3px; font-variant-numeric:tabular-nums; }
-  .tile::after { content:''; position:absolute; top:6px; right:6px; width:5px; height:5px;
-    border-top:1px solid var(--line-3); border-right:1px solid var(--line-3); }
+  /* ---- tiles ---- */
+  .tiles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px 28px;
+    margin-top:26px; padding:26px 34px 30px; border-top:1px solid rgba(32,30,29,.14); }
+  .tile .k { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-45); }
+  .tile .v { font-size:32px; font-weight:700; letter-spacing:-.03em; line-height:1.05;
+    font-variant-numeric:tabular-nums; margin-top:8px; }
+  .tile .v.quiet { color:var(--ink-45); }
+  .tile .sub { font-size:11.5px; color:var(--ink-55); margin-top:4px;
+    font-variant-numeric:tabular-nums; }
 
-  .legend { display:flex; gap:16px; flex-wrap:wrap; font-size:10px; letter-spacing:.12em;
-    text-transform:uppercase; color:var(--muted); }
+  /* ---- panels ---- */
+  .duo { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
+    gap:18px; align-items:stretch; }
+  .duo .card { display:flex; flex-direction:column; }
+  .panel-h { display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    padding:17px 26px; border-bottom:1px solid var(--ink-12); font-size:10.5px;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--ink-45); }
+  .panel-h .legend { margin-left:auto; }
+  .legend { display:flex; gap:15px; flex-wrap:wrap; font-size:10.5px;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--ink-45); }
   .legend span { display:inline-flex; align-items:center; gap:6px; }
-  .legend i { width:9px; height:7px; display:inline-block; }
-  .sw-ok { background:var(--ink); }
-  .sw-inc { background:var(--muted); }
-  .sw-bad { border:1px solid var(--faint); }
+  .legend i { width:10px; height:8px; border-radius:2px; display:inline-block; }
+  .sw-ok { background:var(--ink-70); }
+  .sw-inc { background:var(--ink-45); }
+  .sw-bad { border:1px solid var(--ink-45); }
+  .sw-new { background:var(--accent); }
+  .sw-closed { background:var(--olive); }
+  .note { font-size:11.5px; line-height:1.65; color:var(--ink-55); text-wrap:pretty; }
+  .note b { color:var(--ink-70); font-weight:600; }
+  .note.lead { padding:16px 26px 0; margin:0; }
+  #snapshot-note:empty { display:none; }
+  #snapshot-note .note { padding:0 10px; }
 
+  /* ---- vendor table ---- */
   .scroll { overflow-x:auto; }
-  table { border-collapse:collapse; width:100%; font-size:13px; font-variant-numeric:tabular-nums; }
-  th { text-align:right; padding:9px 16px; border-bottom:1px solid var(--line); font-size:10px;
-    letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:500;
+  table { border-collapse:collapse; width:100%; font-size:13px;
+    font-variant-numeric:tabular-nums; }
+  th { text-align:right; padding:13px 14px; border-bottom:1px solid var(--ink-12);
+    font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-45);
+    font-weight:500; white-space:nowrap; }
+  td { text-align:right; padding:11px 14px; border-bottom:1px solid var(--ink-07);
     white-space:nowrap; }
-  td { text-align:right; padding:10px 16px; border-bottom:1px solid var(--track); white-space:nowrap; }
-  th:first-child, td:first-child { text-align:left; }
-  tbody tr:hover { background:var(--hover); }
+  th:first-child, td:first-child { text-align:left; padding-left:26px; }
+  th:last-child, td:last-child { padding-right:26px; }
+  tbody tr:hover { background:rgba(32,30,29,.05); }
   tbody tr:last-child td { border-bottom:0; }
-  .vendor { font-family:var(--cond); font-weight:600; font-size:15px; letter-spacing:.09em;
-    text-transform:uppercase; }
-  .zero { color:var(--fainter); }
+  .vendor { font-weight:600; font-size:13.5px; text-transform:capitalize; }
+  .q { color:var(--ink-45); }
+  .zero { color:var(--ink-45); }
   .up { color:var(--ink); }
   /* Segments are separated by a 2px gap so adjacent fills never read as one,
      each carries its own title, and the bar as a whole is labelled — the fill
      weight is a second cue, not the only one. */
-  .bar { display:flex; gap:2px; height:8px; width:132px; background:var(--track); }
-  .bar span { min-width:4px; }
-  .bar .s-ok { background:var(--ink); }
-  .bar .s-inc { background:var(--muted); }
-  .bar .s-bad { border:1px solid var(--faint); box-sizing:border-box; }
+  .bar { display:flex; gap:2px; height:9px; width:132px; background:var(--ink-07);
+    border-radius:999px; }
+  .bar span { min-width:5px; border-radius:999px; }
+  .bar .s-ok { background:var(--ink-70); }
+  .bar .s-inc { background:var(--ink-45); }
+  .bar .s-bad { border:1px solid var(--ink-45); box-sizing:border-box; }
 
+  /* ---- needs attention ---- */
   .probs { display:flex; flex-direction:column; }
-  .prob { padding:13px 16px; border-bottom:1px solid var(--track); display:flex;
-    flex-direction:column; gap:6px; }
+  .prob { padding:15px 26px; border-bottom:1px solid var(--ink-07); display:flex;
+    flex-direction:column; gap:7px; }
   .prob:last-child { border-bottom:0; }
-  .prob .top { display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; }
-  .prob .tok { font-family:var(--mono); font-size:12px; color:var(--ink-2);
-    overflow-wrap:anywhere; }
-  .prob .st { font-size:10px; letter-spacing:.14em; text-transform:uppercase; padding:1px 7px;
-    border:1px solid var(--faint); color:var(--ink-2); }
-  .prob .st.failed { background:var(--ink); color:var(--bg); border-color:var(--ink); }
-  .prob .rows { margin-left:auto; font-size:11px; color:var(--muted);
+  .prob .top { display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; padding:0; }
+  .prob .tok { font-family:var(--mono); font-size:12px; overflow-wrap:anywhere; }
+  .prob .st { font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+    padding:2px 9px; border:1px solid var(--ink-20); border-radius:999px;
+    color:var(--ink-70); }
+  .prob .st.failed { background:var(--ink); border-color:var(--ink); color:var(--card); }
+  .prob .rows { margin-left:auto; font-size:11.5px; color:var(--ink-55);
     font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .prob .detail { font-family:var(--mono); font-size:11.5px; color:var(--faint);
+  .prob .detail { font-family:var(--mono); font-size:11.5px; color:var(--ink-55);
     text-wrap:pretty; overflow-wrap:anywhere; }
 
-  .chart { padding:16px; display:flex; flex-direction:column; gap:12px; flex:1; }
-  .chart .plot { display:flex; gap:10px; align-items:flex-end; height:132px; }
-  .chart .day { flex:1; display:flex; flex-direction:column; align-items:center; gap:7px; min-width:0; }
-  .chart .pair { display:flex; gap:2px; align-items:flex-end; height:104px; width:100%;
+  /* ---- churn ---- */
+  .chart { padding:20px 26px 22px; display:flex; flex-direction:column; gap:14px; flex:1; }
+  .chart .plot { display:flex; gap:12px; align-items:flex-end; background:var(--sunk);
+    border-radius:24px; padding:14px 14px 10px; }
+  .chart .day { flex:1; display:flex; flex-direction:column; align-items:center; gap:8px;
+    min-width:0; }
+  .chart .pair { display:flex; gap:3px; align-items:flex-end; height:104px; width:100%;
     justify-content:center; }
-  .chart .pair span { width:42%; }
-  .chart .n-new { background:var(--ink); }
-  .chart .n-closed { background:var(--fainter); }
-  .chart .lab { font-size:10px; letter-spacing:.08em; color:var(--muted);
-    font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .chart .hr { height:1px; background:var(--line); margin-top:auto; }
-  .chart .foot { font-size:11.5px; color:var(--muted); text-wrap:pretty; }
+  .chart .pair span { width:42%; border-radius:5px 5px 0 0; }
+  .chart .n-new { background:var(--accent); }
+  .chart .n-closed { background:var(--olive); }
+  .chart .lab { font-size:10px; color:var(--ink-45); font-variant-numeric:tabular-nums;
+    white-space:nowrap; }
+  .chart .hr { height:1px; background:var(--ink-12); margin-top:auto; }
+  .chart .foot { margin:0; font-size:11.5px; line-height:1.6; color:var(--ink-55);
+    text-wrap:pretty; }
 
-  .log { padding:0 16px 4px; }
+  /* ---- raw log ---- */
+  .log { padding:6px 26px 12px; }
   .log .row { display:grid; grid-template-columns:64px minmax(0,1fr) auto 92px; gap:16px;
-    align-items:baseline; padding:8px 0; border-bottom:1px solid var(--track);
-    font-family:var(--mono); font-size:11.5px; color:var(--faint); }
+    align-items:baseline; padding:9px 0; border-bottom:1px solid var(--ink-07);
+    font-family:var(--mono); font-size:11.5px; color:var(--ink-55); }
   .log .row:last-child { border-bottom:0; }
-  .log .b { color:var(--ink-2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .log .st { letter-spacing:.08em; text-transform:uppercase; text-align:right; white-space:nowrap; }
-  .log .st.complete { color:var(--faint); }
-  .log .st.incomplete, .log .st.failed { color:var(--ink); }
+  .log .b { color:var(--ink); min-width:0; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; }
+  .log .st { letter-spacing:.08em; text-transform:uppercase; text-align:right;
+    white-space:nowrap; }
+  .log .st.complete { color:var(--ink-45); }
+  .log .st.incomplete, .log .st.failed { color:var(--ink); font-weight:600; }
 
-  details { border:1px solid var(--line); background:var(--panel); }
-  summary { cursor:pointer; padding:11px 16px; font-size:10px; letter-spacing:.16em;
-    text-transform:uppercase; color:var(--muted); }
-  summary:hover { color:#fff; }
-  .empty { padding:20px 16px; color:var(--faint); font-size:13px; }
-  .note { font-size:11.5px; color:var(--muted); text-wrap:pretty; }
-  code { font-family:var(--mono); font-size:11px; color:var(--dim); }
-  footer { padding:6px 0 24px; font-size:11px; color:var(--faint); letter-spacing:.06em;
-    display:flex; gap:16px; flex-wrap:wrap; }
-  footer .path { margin-left:auto; font-family:var(--mono); }
+  summary { cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px;
+    padding:17px 26px; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-45); transition:color .2s; }
+  summary::-webkit-details-marker { display:none; }
+  summary::after { content:'+'; margin-left:auto; font-size:15px; line-height:1; }
+  details[open] summary::after { content:'\2013'; }
+  details[open] summary { border-bottom:1px solid var(--ink-12); }
+  summary:hover { color:var(--ink-70); }
+  .empty { padding:22px 26px; color:var(--ink-55); font-size:13px; }
+  code { font-family:var(--mono); font-size:11.5px; color:var(--ink-70);
+    background:var(--sunk); padding:1px 6px; border-radius:6px; }
 
-  @media (max-width:900px) {
-    .app { grid-template-columns:minmax(0,1fr); }
-    .side { position:static; height:auto; border-right:0;
-      border-bottom:1px solid var(--line); }
-    .sweep { margin-top:0; }
-    .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  footer { display:flex; gap:8px 20px; flex-wrap:wrap; align-items:baseline;
+    padding:2px 8px 0; font-size:11.5px; color:var(--ink-45); }
+  footer .stamp { font-variant-numeric:tabular-nums; letter-spacing:.04em; }
+  footer .r { margin-left:auto; font-family:var(--mono); }
+
+  @media (max-width:820px) {
+    .page { padding:14px 12px 28px; }
+    .card { border-radius:22px; }
+    .top, .hero, .pulse { padding-left:20px; padding-right:20px; }
+    .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); padding:22px 20px 26px; }
+    .panel-h, .prob, .empty, .chart, .log, summary, .note.lead {
+      padding-left:20px; padding-right:20px; }
+    /* Four columns do not fit, and the one that gets squeezed to nothing is
+       the board token — which is the only part of a log row that says which
+       board it is about. The stats move under it instead. */
+    .log .row { grid-template-columns:64px minmax(0,1fr) auto; gap:4px 12px; }
+    .log .row > :first-child { grid-area:1 / 1; }
+    .log .b { grid-area:1 / 2; }
+    .log .s { grid-area:2 / 2; }
+    .log .st { grid-area:1 / 3; }
+    th:first-child, td:first-child { padding-left:20px; }
+    th:last-child, td:last-child { padding-right:20px; }
+    .hero .right { margin-left:0; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    * { transition-duration:.01ms !important; animation-duration:.01ms !important; }
   }
 </style>
 
-<div class="app">
-  <aside class="side">
-    <div class="brand">
-      <div class="mark">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f2f2f3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 12h18"></path><path d="M12 3v18"></path></svg>
-        <div class="name">ReqTrace</div>
-      </div>
-      <div class="sub">AU requisition index · v0.1</div>
-    </div>
-    <nav class="nav">
-      <div class="h">Console</div>
-      <a href="index.html">
-        <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg></span>
-        <span>Search</span><span class="n" id="nav-search">—</span>
-      </a>
-      <a href="runs.html" aria-current="page">
-        <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg></span>
-        <span>Ingest</span><span class="n" id="nav-runs">—</span>
-      </a>
-    </nav>
-    <div class="sweep" id="sweep" hidden>
-      <div class="h">Sweep</div>
-      <div class="state" id="sweep-state"></div>
-      <div class="when" id="sweep-when"></div>
-      <div class="spark" id="sweep-spark"></div>
-      <div class="cap" id="sweep-cap"></div>
-    </div>
-  </aside>
-
-  <div class="col">
-    <header>
-      <div class="topbar">
-        <div class="t">Ingest health</div>
-        <div class="vr"></div>
-        <div class="s" id="subtitle">every sweep diffs each board in full</div>
-        <div class="right">
-          <div class="stamp" id="stamp"></div>
-          <div class="mode"><i></i><span id="mode">Live index</span></div>
-        </div>
-      </div>
+<div class="page">
+  <div class="card">
+    <header class="top">
+      <a class="mark" href="./">Req<em>Trace</em></a>
+      <span class="scope" id="subtitle">every sweep diffs each board in full</span>
+      <span class="swept" id="modechip"><i></i><span id="mode">Live index</span></span>
+      <a class="back" href="index.html">Role index &rarr;</a>
     </header>
 
-    <main>
-      <div class="hero" id="hero"><div><div class="big">loading…</div></div></div>
-      <div id="snapshot-note"></div>
-      <div class="tiles" id="tiles"></div>
+    <section class="hero" id="hero"><div><div class="big">loading&hellip;</div></div></section>
 
-      <div class="panel">
-        <div class="panel-h">
-          <span>Coverage by vendor</span>
-          <span class="legend">
-            <span><i class="sw-ok"></i>complete</span>
-            <span><i class="sw-inc"></i>incomplete</span>
-            <span><i class="sw-bad"></i>failed</span>
-          </span>
-        </div>
-        <div class="note" style="padding:11px 16px 0">Each board's most recent run, rolled
-          up per adapter. A board is <b>complete</b> when the vendor's own total matched
-          what was parsed — only a complete snapshot is allowed to close anything, so
-          <b>incomplete</b> boards are being read but are not retiring filled roles.</div>
-        <div class="scroll"><table id="vendors"></table></div>
-      </div>
+    <section class="pulse" id="sweep" hidden>
+      <div class="railhead">Recent board fetches</div>
+      <div class="well"><div class="spark" id="sweep-spark" role="img"></div></div>
+      <div class="cap" id="sweep-cap"></div>
+    </section>
 
-      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:stretch">
-        <div class="panel" style="flex:1 1 380px;display:flex;flex-direction:column">
-          <div class="panel-h">Needs attention</div>
-          <div class="probs" id="problems"></div>
-        </div>
-        <div class="panel" style="flex:1 1 380px;display:flex;flex-direction:column">
-          <div class="panel-h">
-            <span>Churn by day</span>
-            <span class="legend">
-              <span><i class="sw-ok"></i>new</span>
-              <span><i style="background:#7a7a7d"></i>closed</span>
-            </span>
-          </div>
-          <div class="chart">
-            <div class="plot" id="churn"></div>
-            <div class="hr"></div>
-            <div class="foot" id="churn-note"></div>
-          </div>
-        </div>
-      </div>
-
-      <details>
-        <summary>Raw run log — last 100 board fetches</summary>
-        <div class="log" id="recent"></div>
-      </details>
-
-      <footer>
-        <span>Scheduled by launchd · <code>python scripts/install_autorun.py --status</code></span>
-        <span class="path">data/logs/ingest.log</span>
-      </footer>
-    </main>
+    <section class="tiles" id="tiles"></section>
   </div>
+
+  <div id="snapshot-note"></div>
+
+  <div class="card">
+    <div class="panel-h">
+      <span>Coverage by vendor</span>
+      <span class="legend">
+        <span><i class="sw-ok"></i>complete</span>
+        <span><i class="sw-inc"></i>incomplete</span>
+        <span><i class="sw-bad"></i>failed</span>
+      </span>
+    </div>
+    <p class="note lead">Each board&rsquo;s most recent run, rolled up per adapter. A board
+      is <b>complete</b> when the vendor&rsquo;s own total matched what was parsed &mdash;
+      only a complete snapshot is allowed to close anything, so <b>incomplete</b> boards
+      are being read but are not retiring filled roles.</p>
+    <div class="scroll"><table id="vendors"></table></div>
+  </div>
+
+  <div class="duo">
+    <div class="card">
+      <div class="panel-h">Needs attention</div>
+      <div class="probs" id="problems"></div>
+    </div>
+    <div class="card">
+      <div class="panel-h">
+        <span>Churn by day</span>
+        <span class="legend">
+          <span><i class="sw-new"></i>new</span>
+          <span><i class="sw-closed"></i>closed</span>
+        </span>
+      </div>
+      <div class="chart">
+        <div class="plot" id="churn"></div>
+        <div class="hr"></div>
+        <p class="foot" id="churn-note"></p>
+      </div>
+    </div>
+  </div>
+
+  <details class="card" id="rawlog">
+    <summary>Raw run log &mdash; last 100 board fetches</summary>
+    <div class="log" id="recent"></div>
+  </details>
+
+  <footer>
+    <span>Scheduled by launchd &middot;
+      <code>python scripts/install_autorun.py --status</code></span>
+    <span class="stamp" id="stamp"></span>
+    <span class="r">data/logs/ingest.log</span>
+  </footer>
 </div>
 
 <script>
@@ -397,13 +410,13 @@ function vendorTable(rows) {
       <td class="vendor">${esc(r.vendor)}</td>
       <td style="text-align:left">${healthBar(r)}</td>
       <td>${n(r.boards)}</td>
-      <td style="color:var(--ink-2)">${n(r.ok)}</td>
+      <td style="color:var(--ink-70)">${n(r.ok)}</td>
       <td>${num(r.incomplete)}</td>
       <td>${num(r.failed)}</td>
-      <td style="color:var(--faint)">${n(r.fetched)}</td>
-      <td style="color:var(--faint)">${num(r.new)}</td>
-      <td style="color:var(--faint)">${num(r.closed)}</td>
-      <td style="color:var(--muted)" title="${esc(stamp(r.last_run))}">${esc(ago(hoursSince(r.last_run)))}</td>
+      <td class="q">${n(r.fetched)}</td>
+      <td class="q">${num(r.new)}</td>
+      <td class="q">${num(r.closed)}</td>
+      <td class="q" title="${esc(stamp(r.last_run))}">${esc(ago(hoursSince(r.last_run)))}</td>
     </tr>`).join('')}</tbody>`;
 }
 
@@ -423,10 +436,10 @@ function problemList(rows) {
   </div>`).join('');
 }
 
-const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const dayLabel = day => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day || '');
-  return m ? `${m[3]} ${MONTHS[+m[2] - 1]}` : (day || '');
+  return m ? `${+m[3]} ${MONTHS[+m[2] - 1]}` : (day || '');
 };
 
 function churnChart(rows) {
@@ -474,28 +487,27 @@ function recentLog(rows) {
     return `<div class="row">
       <span title="${esc(stamp(r.fetched_at))}">${esc(clock(r.fetched_at))}</span>
       <span class="b" title="${esc(r.vendor)}:${esc(r.token)}">${esc(r.vendor)}:${esc(r.token)}</span>
-      <span>${esc(bits.join(' · '))}</span>
+      <span class="s">${esc(bits.join(' · '))}</span>
       <span class="st ${st}">${st}</span>
     </div>`;
   }).join('');
 }
 
-function sweep(d, s) {
-  $('#nav-runs').textContent = n(s.boards);
-  if (!s.ever_run) return;
-  const lv = level(s);
-  $('#sweep-state').className = 'state is-' + lv;
-  $('#sweep-state').innerHTML = `<i></i>${LABEL[lv]}`;
-  $('#sweep-when').innerHTML =
-    `Last board ${esc(ago(hoursSince(s.last_run)))}<br>A board unseen for ${s.stale_hours}h is stale`;
+// Real run-log data, not chrome: how much each of the last two dozen board
+// fetches actually brought back. The state and the last-run age it used to
+// repeat now live in the hero above it, which says both at full size.
+function sweep(d) {
   const recent = (d.recent || []).slice(0, 24).reverse();
-  if (recent.length) {
-    const max = Math.max(...recent.map(r => r.fetched || 0), 1);
-    $('#sweep-spark').innerHTML = recent.map((r, i) =>
-      `<span class="${i === recent.length - 1 ? 'last' : ''}" style="height:${
-        Math.max(Math.round((r.fetched || 0) / max * 22), 2)}px"></span>`).join('');
-    $('#sweep-cap').textContent = `${recent.length} board fetches`;
-  }
+  if (!recent.length) return;
+  const max = Math.max(...recent.map(r => r.fetched || 0), 1);
+  $('#sweep-spark').innerHTML = recent.map((r, i) =>
+    `<span class="${i === recent.length - 1 ? 'last' : ''}" style="height:${
+      Math.max(Math.round((r.fetched || 0) / max * 42), 3)}px" title="${
+      esc(r.vendor)}:${esc(r.token)} — ${n(r.fetched)} rows"></span>`).join('');
+  $('#sweep-spark').setAttribute('aria-label',
+    `Rows returned by each of the last ${recent.length} board fetches, oldest first.`);
+  $('#sweep-cap').textContent =
+    `${recent.length} board fetches, oldest first · height is rows returned`;
   $('#sweep').hidden = false;
 }
 
@@ -516,44 +528,49 @@ async function source() {
 }
 
 source().then(([d, idx, asOf]) => {
-  if (d.error) {
-    $('#hero').innerHTML = `<div><div class="k">Run log</div>
-      <div class="big">Unreadable</div>
-      <div class="when">${esc(d.error)}</div></div>`;
-    return;
-  }
-  const s = d.summary;
-  $('#subtitle').textContent = `${n(s.boards)} boards · every sweep diffs each board in full`;
-  if (idx) $('#nav-search').textContent = n(idx.au_open);
-  hero(s);
-  tiles(s, idx);
-  vendorTable(d.vendors);
-  problemList(d.problems);
-  churnChart(d.churn);
-  recentLog(d.recent);
-  sweep(d, s);
-
-  // The churn table carries the columns the chart cannot. Built after the
-  // chart so the panel exists to hang it on.
-  const det = document.createElement('details');
-  det.innerHTML = '<summary>Churn table — board fetches and reopenings</summary>'
-    + '<div class="scroll"><table id="churn-table"></table></div>';
-  document.querySelector('details').before(det);
-  churnTable(d.churn);
-
   if (asOf) {
     // On a static export every "N hours ago" on this page is measured from the
     // export, not from now. Saying so is the difference between a stale page
-    // and a lying one.
+    // and a lying one — so it is settled before the run log is read, and an
+    // unreadable log cannot leave the masthead claiming a live index.
     $('#mode').textContent = 'Static export';
-    $('#stamp').textContent = 'SNAPSHOT ' + stamp(asOf);
+    $('#modechip').classList.add('cold');
+    $('#stamp').textContent = 'Snapshot ' + stamp(asOf);
     const el = document.createElement('div');
     el.className = 'note';
     el.textContent = 'Static snapshot exported ' + stamp(asOf) +
       '. Ages on this page are counted from that moment, not from now.';
     $('#snapshot-note').append(el);
   } else {
-    $('#stamp').textContent = 'LIVE ' + stamp(new Date().toISOString());
+    $('#stamp').textContent = 'Live ' + stamp(new Date().toISOString());
   }
+
+  if (d.error) {
+    $('#hero').innerHTML = `<div><div class="k">Run log</div>
+      <div class="big">Unreadable</div>
+      <div class="when">${esc(d.error)}</div></div>`;
+    return;
+  }
+
+  const s = d.summary;
+  $('#subtitle').textContent = `${n(s.boards)} boards · every sweep diffs each board in full`;
+  hero(s);
+  tiles(s, idx);
+  vendorTable(d.vendors);
+  problemList(d.problems);
+  churnChart(d.churn);
+  recentLog(d.recent);
+  sweep(d);
+
+  // The churn table carries the columns the chart cannot. Built after the
+  // chart so the panel exists to hang it on, and anchored to the raw log by id
+  // rather than to "the first details on the page", which the layout owns.
+  const det = document.createElement('details');
+  det.className = 'card';
+  det.innerHTML = '<summary>Churn table — board fetches and reopenings</summary>'
+    + '<div class="scroll"><table id="churn-table"></table></div>';
+  $('#rawlog').before(det);
+  churnTable(d.churn);
+
 });
 </script>
