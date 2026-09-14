@@ -3,8 +3,8 @@
 
 Not a re-sweep. Sweeping into an empty Postgres would stamp `first_seen_at` on
 every row with today's date, drop every `closed_at`, and replace the run log
-with one fresh entry per board — restarting precisely the series the README
-says is worth more than the listings. The rows have to be carried over.
+with one fresh entry per board — restarting precisely the closure series that
+is the point of the index. The rows have to be carried over.
 
     DATABASE_URL='postgres://…' python scripts/migrate_to_postgres.py
     DATABASE_URL='…' python scripts/migrate_to_postgres.py --force   # re-copy

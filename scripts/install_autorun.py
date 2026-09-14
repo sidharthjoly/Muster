@@ -5,10 +5,10 @@ Closure detection is the point of this index, and it is only as truthful as the
 last run: a role that was filled yesterday still shows as open until something
 diffs the board again. Until now that something was a person typing a command.
 
-macOS launchd rather than GitHub Actions, deliberately — the README's Next list
-gates Actions on a Postgres that does not exist yet, and an ephemeral runner
-cannot see `data/jobs.db`. When a DATABASE_URL is provisioned, this becomes the
-fallback rather than the plan.
+macOS launchd rather than GitHub Actions, deliberately — the Next list in
+docs/build-log.md gates Actions on a Postgres that did not exist yet, and an
+ephemeral runner cannot see `data/jobs.db`. When a DATABASE_URL is provisioned,
+this becomes the fallback rather than the plan.
 
     python scripts/install_autorun.py                # daily at 05:30 local
     python scripts/install_autorun.py --at 03:30

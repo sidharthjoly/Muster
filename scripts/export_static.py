@@ -29,7 +29,7 @@ A static export is a snapshot: it is stale the moment the next sweep lands.
 Both pages therefore carry the export timestamp, and `/runs` says outright that
 its "N hours ago" figures are counted from the export rather than from now.
 Nothing here re-exports on its own — a GitHub Actions runner cannot see
-`data/jobs.db` (see the README), so this runs locally, from the same machine
+`data/jobs.db` (see docs/build-log.md), so this runs locally, from the same
 as the sweep. `--publish` refuses a build that did not come from Postgres,
 because the alternative is not an error: it is the published index quietly
 reverting to whatever the local SQLite file last knew.
