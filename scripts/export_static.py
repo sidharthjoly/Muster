@@ -30,7 +30,9 @@ Both pages therefore carry the export timestamp, and `/runs` says outright that
 its "N hours ago" figures are counted from the export rather than from now.
 Nothing here re-exports on its own — a GitHub Actions runner cannot see
 `data/jobs.db` (see the README), so this runs locally, from the same machine
-as the sweep.
+as the sweep. `--publish` refuses a build that did not come from Postgres,
+because the alternative is not an error: it is the published index quietly
+reverting to whatever the local SQLite file last knew.
 """
 
 from __future__ import annotations
@@ -275,11 +277,25 @@ def main() -> int:
                     help="force-push site/ to the gh-pages branch")
     ap.add_argument("--allow-dirty", action="store_true",
                     help="publish even with uncommitted work in the tree")
+    ap.add_argument("--allow-sqlite", action="store_true",
+                    help="publish a build made from SQLite (default: refuse)")
     args = ap.parse_args()
 
     if not _dsn() and not args.db.exists():
         print(f"no index at {args.db} — run an ingest first, or set DATABASE_URL",
               file=sys.stderr)
+        return 2
+
+    # The failure this prevents is a silent one. With no DSN in the environment
+    # `build` falls back to the local SQLite file without complaint, and the
+    # publish force-pushes that over a gh-pages branch fed from Postgres:
+    # nothing errors, the site just moves backwards. The launchd plist carries
+    # no DATABASE_URL, so the scheduled publish is precisely where it bites.
+    if args.publish and not args.allow_sqlite and not _dsn():
+        print(f"refusing to publish a SQLite build: DATABASE_URL is not set, so "
+              f"this would\nexport {args.db} and force-push it over the "
+              f"published index.\nSet the DSN, or pass --allow-sqlite if that is "
+              f"genuinely what you want.", file=sys.stderr)
         return 2
 
     m = build(args.db)
@@ -288,6 +304,14 @@ def main() -> int:
     size_report()
 
     if args.publish:
+        # The check above is on the intent; this one is on the artefact.
+        # `_connect` picks the backend, and this is the only place that asks
+        # what it actually picked — so a future fallback added there cannot
+        # reach gh-pages without passing here first.
+        if m["backend"] != "postgres" and not args.allow_sqlite:
+            print(f"refusing to publish: site/ was built from {m['backend']}, "
+                  f"not postgres.", file=sys.stderr)
+            return 2
         return publish(allow_dirty=args.allow_dirty)
     if args.serve:
         import http.server, functools  # noqa: E401
