@@ -155,6 +155,85 @@
   .note { margin-top:26px; font-size:11.5px; line-height:1.65; color:var(--ink-55); }
   .note b { color:var(--ink-70); font-weight:600; }
 
+  /* ---- resume match ---- */
+  /* A band rather than a rail control: it is not a filter. It reorders the
+     whole list and adds a column to every row, so it sits with the search box
+     that also reorders, not with the chips that narrow. */
+  .cv { margin:12px 34px 0; }
+  .cvopen { display:flex; align-items:center; gap:10px; width:100%; height:40px;
+    padding:0 16px; border:1px dashed var(--ink-20); border-radius:999px;
+    background:transparent; color:var(--ink); font:inherit; font-size:13px;
+    cursor:pointer; text-align:left; transition:border-color .2s, background .2s; }
+  .cvopen:hover { border-color:var(--accent); background:rgba(198,113,57,.05); }
+  .cvopen svg { flex:none; color:var(--accent-ink); }
+  .cvopen .hint { color:var(--ink-45); font-size:11.5px; }
+  .cvopen .x { margin-left:auto; font-size:11.5px; color:var(--accent-ink); }
+  .cv[data-on=yes] .cvopen { border-style:solid; border-color:var(--accent);
+    background:rgba(198,113,57,.08); }
+  .cvbody { margin-top:10px; padding:16px; background:var(--sunk);
+    border:1px solid var(--ink-12); border-radius:18px; }
+  .drop { display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:22px 14px; border:1.5px dashed var(--ink-20); border-radius:14px;
+    background:var(--card); cursor:pointer; text-align:center;
+    transition:border-color .2s, background .2s; }
+  .drop:hover, .drop.over { border-color:var(--accent); background:rgba(198,113,57,.07); }
+  .drop b { font-size:13.5px; font-weight:600; }
+  .drop u { text-decoration-color:var(--accent); text-underline-offset:2px; }
+  .drop .fine { font-size:11.5px; color:var(--ink-55); }
+  .cvta { width:100%; margin-top:10px; min-height:74px; max-height:180px; padding:11px 13px;
+    border:1px solid var(--ink-20); border-radius:12px; background:var(--card);
+    color:var(--ink); font:inherit; font-size:12.5px; line-height:1.5; resize:vertical;
+    outline:none; }
+  .cvta:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(198,113,57,.12); }
+  .cvnote { margin:10px 2px 0; font-size:11px; line-height:1.6; color:var(--ink-55); }
+  .cvnote b { color:var(--ink-70); font-weight:600; }
+  .cvstate { display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    margin-top:12px; padding-top:12px; border-top:1px solid var(--ink-12);
+    font-size:12px; color:var(--ink-70); }
+  .cvstate.bad { color:#8a3d22; }
+  .cvstate .terms { display:flex; gap:5px; flex-wrap:wrap; }
+  .cvstate button { height:28px; padding:0 12px; border:1px solid var(--ink-20);
+    border-radius:999px; background:transparent; font:inherit; font-size:11.5px;
+    color:var(--ink); cursor:pointer; margin-left:auto; }
+  .cvstate button:hover { border-color:var(--ink-45); }
+  .cvhow { flex-basis:100%; margin:2px 0 0; font-size:11px; line-height:1.6;
+    color:var(--ink-55); }
+  .cvhow b { color:var(--ink-70); font-weight:600; }
+  .cvhow em { font-style:normal; color:var(--accent-ink); }
+  .term { display:inline-flex; align-items:center; height:21px; padding:0 8px;
+    border-radius:999px; background:rgba(143,160,115,.3); color:#3d472b;
+    font-size:10.5px; }
+  .term.off { background:var(--ink-07); color:var(--ink-45); }
+
+  /* A matched row carries a third line and a meter, so it is taller and the
+     grid grows a column. Both only while matching is on — the unmatched list
+     is untouched. */
+  /* `max-height` is the transition handle rather than a layout figure, so it
+     wants headroom over the ~77px the three lines actually need: this page
+     ships without a webfont and renders in whatever the reader has, and a
+     figure trimmed to the exact height on one face clips the match line on
+     another. */
+  .rows.matched .row { grid-template-columns:minmax(0,1fr) 74px 62px 52px;
+    max-height:92px; }
+  .rows.matched .row.gone { max-height:0; }
+  .hits { display:flex; gap:4px; flex-wrap:nowrap; overflow:hidden; margin-top:3px; }
+  .hits span { flex:none; font-size:10px; padding:1px 7px; border-radius:999px;
+    background:rgba(143,160,115,.32); color:#3d472b; }
+  .hits span.title { background:rgba(198,113,57,.22); color:var(--accent-ink); }
+  .hits span.none { background:var(--ink-07); color:var(--ink-45); }
+  .meter { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+  .meter i { display:block; width:34px; height:5px; border-radius:999px;
+    background:var(--ink-12); overflow:hidden; }
+  .meter i b { display:block; height:100%; border-radius:999px;
+    background:var(--accent); }
+  .meter em { font-style:normal; font-size:10px; color:var(--ink-45);
+    font-variant-numeric:tabular-nums; }
+  /* The requisition signals. Not a hiring probability — the index has never
+     observed an application or a hire — so they say only what it did see: how
+     long the req has been open, and how many identical ones sit on the board. */
+  .reqs { font-size:10.5px; color:var(--ink-45); }
+  .reqs b { font-weight:600; color:#8a5a2b; }
+
   /* ---- results ---- */
   .results { padding:16px 34px 30px 26px; min-width:0; }
   .rows { list-style:none; margin:0; padding:0; }
@@ -217,6 +296,9 @@
     .results { padding:14px 20px 26px; }
     .row { grid-template-columns:minmax(0,1fr) 66px; }
     .row .age { display:none; }
+    .cv { margin-left:20px; margin-right:20px; }
+    .rows.matched .row { grid-template-columns:minmax(0,1fr) 66px 46px; }
+    .rows.matched .row .age { display:none; }
     .up { height:48px; } .dn { height:26px; } .dn.blind { height:24px; }
   }
   @media (prefers-reduced-motion:reduce) {
@@ -238,6 +320,39 @@
         placeholder="Search roles, employers or skills" aria-label="Search roles">
       <button class="xq" id="xq" type="button" aria-label="Clear search">&times;</button>
     </div>
+
+
+    <section class="cv" id="cv" hidden data-on="no">
+      <button class="cvopen" id="cvopen" type="button"
+              aria-expanded="false" aria-controls="cvbody">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/>
+        </svg>
+        <span id="cvlabel">Match my r&eacute;sum&eacute;</span>
+        <span class="hint" id="cvhint">rank every open role against your own skills</span>
+        <span class="x" id="cvx" hidden>clear</span>
+      </button>
+
+      <div class="cvbody" id="cvbody" hidden>
+        <div class="drop" id="drop" tabindex="0" role="button"
+             aria-label="Choose a r&eacute;sum&eacute; file">
+          <b>Drop a r&eacute;sum&eacute; here, or <u>choose a file</u></b>
+          <span class="fine">PDF or plain text &middot; or paste the text below</span>
+          <input type="file" id="cvfile" hidden
+                 accept=".pdf,.txt,.md,.text,text/plain,application/pdf">
+        </div>
+        <textarea class="cvta" id="cvta" spellcheck="false"
+          placeholder="&hellip;or paste your r&eacute;sum&eacute; text here"></textarea>
+        <p class="cvnote"><b>This stays in your browser.</b> The file is read by
+          this page and never uploaded &mdash; the site is static files on a CDN
+          and has no server to send it to. Nothing is saved; reload and it is
+          gone.</p>
+        <div class="cvstate" id="cvstate" hidden></div>
+      </div>
+    </section>
 
     <section class="dial" id="dial" hidden>
       <div class="dhead">
@@ -304,6 +419,11 @@ const $ = s => document.querySelector(s);
 // a search library would be ceremony — and it is why the export is AU-only:
 // the full 51k index is 28MB.
 const STATIC = { on:false, jobs:[], data:[], exclude:[] };
+// Roles whose ad carried no text at all, so no vocabulary could be read
+// from them. They are in the list and in every filter; they just cannot
+// be ranked, and the footer says so rather than letting them look like
+// roles that were weighed and found wanting.
+let UNRANKABLE = 0;
 const PAGE = 50;
 const WEEKS = 16;
 
@@ -429,12 +549,37 @@ function rowHTML(j) {
     <div class="t">
       <h3>${esc(j.title)}</h3>
       <div class="m">${esc(j.company || '')} &middot; ${esc(where)}${
-        sal ? ' &middot; <b>' + esc(sal) + '</b>' : ''}</div>
+        sal ? ' &middot; <b>' + esc(sal) + '</b>' : ''}</div>${CV.on ? hitsHTML(j) : ''}
     </div>
     <div>${WORK[j.remote_type]
       ? `<span class="chip c-${j.remote_type}">${WORK[j.remote_type]}</span>` : ''}</div>
-    <div class="age">${esc(age(daysAgo(j)))}</div>
+    <div class="age">${esc(age(daysAgo(j)))}</div>${CV.on ? meterHTML(j) : ''}
   </a>`;
+}
+
+// The third line and the meter, added to a row only while a resume is loaded.
+// Both name what they are made of: the terms that actually matched, strongest
+// first, and a bar that is explicitly relative to the best match in the list.
+// A score with nothing behind it is the thing this feature is trying not to be.
+function hitsHTML(j) {
+  const m = j._m || { hits:[], role:null, stretch:false };
+  const parts = [];
+  if (m.role) parts.push(`<span class="title">${esc(m.role)}</span>`);
+  for (const h of m.hits.slice(0, 4)) parts.push(`<span>${esc(h)}</span>`);
+  if (m.stretch) parts.push('<span class="none">a level up</span>');
+  if (!parts.length) parts.push('<span class="none">no shared skills</span>');
+  const req = reqLine(j);
+  if (req) parts.push(`<span class="none">${req}</span>`);
+  return `<div class="hits">${parts.join('')}</div>`;
+}
+
+function meterHTML(j) {
+  const rel = (j._m && j._m.rel) || 0;
+  return `<div class="meter" title="${Math.round(rel * 100)} out of 100 against the
+best match in this list — a share of vocabulary, not a chance of being hired">
+    <i><b style="width:${Math.round(rel * 100)}%"></b></i>
+    <em>${Math.round(rel * 100)}</em>
+  </div>`;
 }
 
 /* ---------- the browser-side backend ---------- */
@@ -453,6 +598,8 @@ async function detectStatic() {
     // An export built before the dial existed has no pulse; the page drops the
     // chart rather than throwing on the way to drawing it.
     if (m.pulse && m.pulse.weeks) PULSE = m.pulse;
+    UNRANKABLE = m.unrankable || 0;
+    wireCV(m);
     return true;
   } catch { return false; }
 }
@@ -494,6 +641,22 @@ function searchLocal(p) {
   });
 
   const when = j => new Date(posted(j)).getTime() || 0;
+  // A loaded resume is a sort, not a filter: nothing is removed, because a role
+  // sharing no vocabulary with a resume is not thereby a role the reader cannot
+  // do. It sinks, and says why on its own row.
+  if (CV.on) {
+    rankAll(rows);
+    rows.sort((a, b) => b._m.score - a._m.score || when(b) - when(a));
+    const ranked = collapseReqs(rows);
+    const off = +p.get('offset') || 0;
+    // `total` and `matched` count what the list actually shows, so the footer
+    // is counting the same things the rows below it are. The rail is not
+    // collapsed: it is a map of where the roles are, and roles are what it
+    // should be counting.
+    return { total:ranked.length, matched:ranked.filter(j => j._m.score > 0).length,
+             results:ranked.slice(off, off + PAGE),
+             facets:off ? null : localFacets() };
+  }
   if (p.get('sort') === 'relevance' && terms.length) {
     // The server ranks with FTS5 bm25. Approximated here as "how many query
     // terms hit the title", which is the part of bm25 a reader would notice.
@@ -520,6 +683,379 @@ function localFacets() {
   };
   return { cities:tally(j => j.location_city).slice(0, 30),
            remote:tally(j => j.remote_type), scope:scope.length };
+}
+
+/* ---------- resume matching ---------- */
+
+/* Static mode only, and deliberately.
+
+   Ranking needs every role's skills against one resume in a single pass, which
+   only the static path has: `searchLocal` already holds all 8,852 rows in
+   memory, while `/api/search` answers 50 at a time out of Postgres and would
+   have to be given the resume to rank server-side — which is the one thing this
+   feature must never do. So the panel is gated on `STATIC.on`, and the served
+   page simply does not offer it. That keeps the resume on the reader's machine
+   by construction rather than by promise.
+
+   What is scored is the `sk` column: a closed skill vocabulary matched against
+   each ad's full description at export time. `kw` cannot do this job — it drops
+   any term more than 4% of the corpus carries, which is exactly where `python`
+   and `aws` live. See `reqtrace/skills.py`. */
+
+const CV = { on:false, skills:new Set(), roles:[], level:null, hasText:false };
+let SKILLMATCH = null;   // compiled vocabulary, built once from the manifest
+let IDF = {};            // slug -> how much a match on it is worth
+
+// A match on a term three roles ask for says far more than a match on one a
+// thousand ask for. Without this, `python`, `excel` and `sql` — which a data
+// resume and a tenth of the index both carry — decide every ranking, and the
+// order reads as arbitrary. `+1` keeps a vocabulary term the corpus happens
+// never to use from dividing by zero.
+function buildIDF(df, n) {
+  IDF = {};
+  for (const slug of Object.keys(df)) IDF[slug] = Math.log(n / (df[slug] + 1));
+}
+
+// The ad side of this ran in Python at export time. This is the resume side of
+// the same function, over text that must not leave the page — so the patterns
+// are shipped in the manifest rather than retyped here, for the reason
+// `data_terms` is: two copies of a matching rule drift, and a form one side
+// knows and the other does not is a match that silently never happens.
+function compileSkills(m) {
+  const rx = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const forms = [];
+  for (const [slug, list] of Object.entries(m.skill_forms || {})) {
+    const alts = [...list].sort((a, b) => b.length - a.length).map(rx).join('|');
+    forms.push([slug, new RegExp(m.skill_edge + '(?:' + alts + ')' + m.skill_tail, 'i')]);
+  }
+  const sharp = Object.entries(m.skill_sharp || {})
+    .map(([slug, src]) => [slug, new RegExp(src, 'i')]);
+  return { forms, sharp };
+}
+
+function detectSkills(text) {
+  const found = new Set();
+  if (!text || !SKILLMATCH) return found;
+  const low = text.toLowerCase();
+  for (const [slug, re] of SKILLMATCH.forms) if (re.test(low)) found.add(slug);
+  for (const [slug, re] of SKILLMATCH.sharp) if (re.test(low)) found.add(slug);
+  return found;
+}
+
+const unpackSk = j => (j.sk || '').split(' ').filter(Boolean);
+
+/* ---- what the resume says it is ---- */
+
+// Matched as phrases against the job title, longest first, so "machine learning
+// engineer" wins over the "engineer" inside it.
+const ROLES = [
+  'machine learning engineer', 'machine learning scientist', 'analytics engineer',
+  'business intelligence', 'data scientist', 'data engineer', 'data analyst',
+  'data architect', 'data manager', 'research scientist', 'decision scientist',
+  'quantitative analyst', 'business analyst', 'platform engineer',
+  'software engineer', 'product manager', 'bi developer', 'bi analyst',
+  'ml engineer', 'statistician', 'actuary', 'economist',
+].sort((a, b) => b.length - a.length);
+
+// Explicit words only. Years of experience are not read: a resume states them
+// in a dozen formats and gets them wrong, and a mis-read level is worse than
+// no level, because it silently reorders everything.
+const LEVELS = [
+  ['graduate', 'intern', 'internship', 'trainee', 'cadet', 'placement'],
+  ['junior', 'associate', 'entry level'],
+  [],                                                   // mid: the unmarked case
+  ['senior', 'snr'],
+  ['lead', 'principal', 'staff engineer', 'manager'],
+  ['head of', 'director', 'chief', 'vp ', 'vice president', 'general manager'],
+];
+
+const levelOf = text => {
+  const low = ' ' + (text || '').toLowerCase() + ' ';
+  let best = null;
+  LEVELS.forEach((words, i) => { if (words.some(w => low.includes(w))) best = i; });
+  return best;
+};
+
+function readCV(text) {
+  CV.skills = detectSkills(text);
+  const low = (text || '').toLowerCase();
+  CV.roles = ROLES.filter(r => low.includes(r));
+  CV.level = levelOf(text);
+  CV.hasText = !!(text || '').trim();
+  CV.on = CV.hasText && (CV.skills.size > 0 || CV.roles.length > 0);
+}
+
+/* ---- scoring ---- */
+
+// A title match is worth about one uncommon skill — enough that a Data Engineer
+// role outranks a Data Scientist role that happens to share three common tools,
+// not so much that it buries a role whose whole stack the reader has.
+const TITLE_WEIGHT = 4.2;
+
+// A graduate resume matched against "Head of Data Science" shares python and
+// sql with it and would otherwise rank it first. Applied only where the resume
+// states a level and the gap is two rungs or more, and shown on the row rather
+// than applied silently — the reader may well want to see the stretch roles.
+const STRETCH = 0.55;
+
+function scoreJob(j) {
+  let score = 0;
+  const hits = [];
+  for (const slug of unpackSk(j)) {
+    if (!CV.skills.has(slug)) continue;
+    score += IDF[slug] || 0;
+    hits.push(slug);
+  }
+  hits.sort((a, b) => (IDF[b] || 0) - (IDF[a] || 0));
+
+  const title = (j.title || '').toLowerCase();
+  const role = CV.roles.find(r => title.includes(r)) || null;
+  if (role) score += TITLE_WEIGHT;
+
+  const jl = levelOf(j.title);
+  const stretch = CV.level !== null && jl !== null && jl - CV.level >= 2;
+  if (stretch) score *= STRETCH;
+
+  return { score, hits, role, stretch };
+}
+
+// The denominator for the meter: the best score anything actually got, so the
+// bar is "how this role compares with the best match in the list" rather than a
+// percentage of some absolute the score has no claim to.
+function rankAll(rows) {
+  let top = 0;
+  for (const j of rows) {
+    j._m = scoreJob(j);
+    if (j._m.score > top) top = j._m.score;
+  }
+  for (const j of rows) j._m.rel = top > 0 ? j._m.score / top : 0;
+  return rows;
+}
+
+/* ---- the requisition signals, in place of odds ---- */
+
+// Deliberately not a probability. This index has never observed an application
+// or a hire, and has watched closures for days rather than months, so there is
+// nothing here that could support a number like "62% likely". What it has
+// actually seen is how long a req has been open and how many identical ones the
+// same board is carrying — both of which a reader can act on without being told
+// a fiction.
+// One row per distinct opening — which the default list deliberately does not
+// do. The index's identity is the ATS's own requisition id, so two reqs with the
+// same title on one board are two records and the list shows two rows; that is
+// the claim the whole project rests on. A ranking is a different lens over the
+// same records: every slot in it should be a distinct thing to apply to, and two
+// adjacent identical rows each captioned "2 identical reqs" is a caption
+// describing what the reader can already see. So the index keeps its identity
+// and the ranking collapses, with the count moving onto the row that survives.
+//
+// Expects `rows` already sorted, so the first member of each group is its
+// best-ranked one and Map insertion order comes out ranked too.
+function collapseReqs(rows) {
+  const norm = t => (t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const groups = new Map();
+  for (const j of rows) {
+    const k = j.board_token + '|' + norm(j.title);
+    const g = groups.get(k);
+    if (g) g.n++;
+    else groups.set(k, { rep:j, n:1 });
+  }
+  const out = [];
+  for (const g of groups.values()) {
+    // Written on every pass, including where it is 1. `openings` lives on the
+    // shared job object next to `_m`, so a row that represented a group under
+    // one filter would otherwise carry that stale count into the next search
+    // where it represents only itself.
+    g.rep.openings = g.n;
+    out.push(g.rep);
+  }
+  return out;
+}
+
+function reqLine(j) {
+  // Counted over the exported slice, which is open AU roles — so it is
+  // "openings in Australia on this board", not across the employer's world.
+  const n = j.openings || 1;
+  return n > 1 ? `<b>${n}</b> openings` : '';
+}
+
+
+/* ---- getting the text out of a file ---- */
+
+// Loaded only when a PDF is actually dropped. The page ships with no
+// dependencies and has to work opened from disk; a parser for a format most
+// readers will not use should not be in the cost of loading the list. If the
+// CDN is blocked or offline this fails softly and the paste box is still there,
+// which is why the textarea is not hidden behind the drop zone.
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+let pdfLoading = null;
+
+function loadPDFJS() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pdfLoading) return pdfLoading;
+  pdfLoading = new Promise((ok, fail) => {
+    const el = document.createElement('script');
+    el.src = PDFJS + 'pdf.min.js';
+    el.onload = () => {
+      if (!window.pdfjsLib) return fail(new Error('pdf.js did not register'));
+      // Without an explicit worker the library tries to resolve one relative to
+      // this page, 404s, and reports it as a malformed PDF — which sends the
+      // reader off debugging their file instead of their network.
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+      ok(window.pdfjsLib);
+    };
+    el.onerror = () => fail(new Error('pdf.js could not be reached'));
+    document.head.append(el);
+  });
+  return pdfLoading;
+}
+
+async function pdfText(file) {
+  const lib = await loadPDFJS();
+  const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pages = [];
+  // A resume is one or two pages; the cap is for the reader who drops a thesis.
+  for (let i = 1; i <= Math.min(doc.numPages, 12); i++) {
+    const page = await doc.getPage(i);
+    const c = await page.getTextContent();
+    // Items carry no spaces of their own — joining without one glues "Python"
+    // to the next run and the vocabulary stops matching anything.
+    pages.push(c.items.map(x => x.str).join(' '));
+  }
+  return pages.join('\n');
+}
+
+async function readFile(file) {
+  if (!file) return '';
+  const pdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if (pdf) return pdfText(file);
+  if (file.size > 2e6) throw new Error('that file is larger than any resume');
+  return file.text();
+}
+
+/* ---- the panel ---- */
+
+function cvSay(html, bad = false) {
+  const el = $('#cvstate');
+  el.hidden = !html;
+  el.className = 'cvstate' + (bad ? ' bad' : '');
+  el.innerHTML = html;
+  const btn = el.querySelector('button');
+  if (btn) btn.onclick = clearCV;
+}
+
+function applyCV(text) {
+  readCV(text);
+  cvGen++;
+  if (!CV.hasText) { cvSay(''); $('#cv').dataset.on = 'no'; $('#cvx').hidden = true; load(); return; }
+
+  if (!CV.on) {
+    cvSay('Nothing in that text matched the skill vocabulary or a role title, '
+      + 'so there is nothing to rank on. If it came from a PDF, the file may be '
+      + 'a scan rather than text &mdash; paste the text instead.', true);
+    $('#cv').dataset.on = 'no';
+    $('#cvx').hidden = true;
+    load();
+    return;
+  }
+
+  // Named back to the reader, strongest first, so a wrong read is visible
+  // before it silently reorders eight thousand rows.
+  const shown = [...CV.skills].sort((a, b) => (IDF[b] || 0) - (IDF[a] || 0));
+  const role = CV.roles.length
+    ? `<span class="term">${esc(CV.roles[0])}</span>` : '';
+  const lvl = CV.level !== null && LEVELS[CV.level].length
+    ? `<span class="term">${esc(LEVELS[CV.level][0])}</span>` : '';
+  cvSay(`Read <b>${shown.length}</b> skill${shown.length === 1 ? '' : 's'}:
+    <span class="terms">${role}${lvl}${
+      shown.map(t => `<span class="term">${esc(t)}</span>`).join('')}</span>
+    <button type="button">Clear</button>
+    <p class="cvhow">Roles are <b>ranked, not filtered</b> — nothing is hidden. A
+      role scores on the terms above that its ad also uses, with rarer ones
+      counting for more: matching <em>dbt</em> says more than matching
+      <em>python</em>. The number on each row is relative to the best match in
+      the list, not a chance of being hired &mdash; this index has never seen an
+      application or a hire, so it has nothing to base one on.</p>`);
+  $('#cv').dataset.on = 'yes';
+  $('#cvx').hidden = false;
+  $('#cvlabel').textContent = 'Ranked against your resume';
+  $('#cvhint').textContent = `${shown.length} skills read`;
+  load();
+}
+
+function clearCV() {
+  cvGen++;
+  $('#cvta').value = '';
+  CV.on = false; CV.skills = new Set(); CV.roles = []; CV.level = null; CV.hasText = false;
+  // `_m` and `openings` are written onto the job objects themselves, and the
+  // paths that read them all re-rank first, so nothing stale is rendered today.
+  // Dropping them here is what keeps that true: it makes "these fields belong
+  // to the resume currently loaded" an invariant of the objects rather than a
+  // property of which call sites happen to exist.
+  for (const j of STATIC.jobs) { delete j._m; delete j.openings; }
+  $('#cv').dataset.on = 'no';
+  $('#cvx').hidden = true;
+  $('#cvlabel').innerHTML = 'Match my r&eacute;sum&eacute;';
+  $('#cvhint').textContent = 'rank every open role against your own skills';
+  cvSay('');
+  load();
+}
+
+function wireCV(m) {
+  SKILLMATCH = compileSkills(m);
+  buildIDF(m.skill_df || {}, Math.max(STATIC.jobs.length, 1));
+
+  // Only where there is a corpus to rank. An export built before the skill
+  // column existed has no `skill_forms`, and the panel stays hidden rather
+  // than offering a match it cannot compute.
+  if (!m.skill_forms || !STATIC.jobs.length) return;
+  $('#cv').hidden = false;
+
+  const open = () => {
+    const was = $('#cvbody').hidden;
+    $('#cvbody').hidden = !was;
+    $('#cvopen').ariaExpanded = String(was);
+    if (was) $('#cvta').focus();
+  };
+  $('#cvopen').onclick = e => {
+    // The "clear" affordance lives inside the toggle, so it has to win.
+    if (e.target.id === 'cvx') { clearCV(); return; }
+    open();
+  };
+
+  const drop = $('#drop'), file = $('#cvfile');
+  drop.onclick = () => file.click();
+  drop.onkeydown = e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click(); }
+  };
+
+  async function take(f) {
+    if (!f) return;
+    cvSay(`Reading <b>${esc(f.name)}</b>&hellip;`);
+    try {
+      const text = await readFile(f);
+      if (!text.trim()) throw new Error('no text could be read from that file');
+      $('#cvta').value = text;
+      applyCV(text);
+    } catch (err) {
+      cvSay(`Could not read that file &mdash; ${esc(err.message || 'unknown error')}.
+        Paste the text into the box instead.`, true);
+    }
+  }
+
+  file.onchange = () => { take(file.files[0]); file.value = ''; };
+  for (const ev of ['dragenter', 'dragover'])
+    drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); });
+  for (const ev of ['dragleave', 'drop'])
+    drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); });
+  drop.addEventListener('drop', e => take(e.dataTransfer.files[0]));
+
+  let cvTimer;
+  $('#cvta').oninput = e => {
+    clearTimeout(cvTimer);
+    const text = e.target.value;
+    cvTimer = setTimeout(() => applyCV(text), 300);
+  };
 }
 
 /* ---------- the dial ---------- */
@@ -668,6 +1204,13 @@ function odometer(v) {
 
 const live = new Map();        // key -> <li>, everything currently mounted
 
+// Bumped whenever the resume changes, including to nothing. A row that is
+// already mounted is normally reused untouched, which is right for a filter —
+// but loading a resume rewrites every row's contents rather than the set of
+// them, and a kept row would otherwise hold the markup it was built with:
+// no match line while ranked, or a stale one after clearing.
+let cvGen = 0;
+
 function paintRows(jobs, append) {
   const list = $('#rows');
   if (!append) list.querySelectorAll('.sk').forEach(el => el.remove());
@@ -697,11 +1240,21 @@ function paintRows(jobs, append) {
     if (!el) {
       el = document.createElement('li');
       el.innerHTML = rowHTML(j);
+      el.dataset.gen = cvGen;
       el.firstElementChild.classList.add('gone');
       live.set(k, el);
       fresh.push(el);
       list.append(el);
-    } else if (!append) {
+      continue;
+    }
+    if (el.dataset.gen !== String(cvGen)) {
+      // Rebuilt in place rather than remounted: the row keeps its position
+      // while the list reorders around it, which is the same thing the reorder
+      // path below is protecting.
+      el.innerHTML = rowHTML(j);
+      el.dataset.gen = cvGen;
+    }
+    if (!append) {
       // A new result set can reorder rows that are already on screen — relevance
       // does — so kept rows are moved into place. Never on the append path:
       // they are already in order there, and moving a node restarts whatever
@@ -757,6 +1310,7 @@ async function load(more = false) {
 
   total = d.total;
   shown = more ? shown.concat(d.results) : d.results;
+  $('#rows').classList.toggle('matched', CV.on);
 
   if (!shown.length) {
     blank('Nothing matches',
@@ -773,8 +1327,18 @@ async function load(more = false) {
   $('#live').textContent = `${n(total)} role${total === 1 ? '' : 's'} ${
     state.q ? 'match this search' : whole() ? 'in the index' : 'in this window'}.`;
 
+  // The list is ranked rather than cut when a resume is loaded, so the count
+  // that matters is no longer "how many matched" but "how many share anything
+  // at all" — and, separately, how many could not be weighed because their ad
+  // carried no text. Saying both is the difference between a ranking and a
+  // verdict.
+  const ranked = CV.on
+    ? `${n(d.matched || 0)} of these share something with your r&eacute;sum&eacute;,
+       ranked first.${UNRANKABLE ? ` ${n(UNRANKABLE)} roles in the index publish no
+       description at all and cannot be ranked either way.` : ''} `
+    : '';
   $('#foot').innerHTML = total
-    ? `${n(Math.min(shown.length, total))} shown of ${n(total)} matching. Every one still
+    ? `${n(Math.min(shown.length, total))} shown of ${n(total)} matching. ${ranked}Every one still
        open as of the last sweep. <button type="button" id="more"${
          shown.length >= total ? ' hidden' : ''}>Show ${
          Math.min(PAGE, total - shown.length)} more</button>`

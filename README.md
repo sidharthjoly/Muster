@@ -10,7 +10,7 @@ disappears — the `first_seen_at` / `closed_at` trace the index accumulates is
 the thing it is named for, and is worth more than the listings.
 
 **353 boards · 51,232 jobs · 3,356 open Australian roles · 279 of them data
-roles · 7 ATS adapters · 129 tests**
+roles · 7 ATS adapters · 284 tests**
 
 Browse a snapshot at <https://reqtrace.sidharthjoly.com/>; ingest health at
 <https://reqtrace.sidharthjoly.com/runs.html>.
@@ -1027,6 +1027,69 @@ Two things the first screenshot exposed, both now fixed:
   only counts when it is not one of ~20 excluded qualifiers (tax, payroll,
   cyber, procurement, audit…). Strong signals — data scientist, ML, analytics,
   quantitative, econometric — always match.
+
+### Matching a résumé, and the number that is not there
+
+Drop a résumé on the front page and the list reorders against it. The file is
+read in the browser and never uploaded — the published site is static files on a
+CDN with no server to send it to, so this is a property of where the feature
+runs, not a promise about what a server does with it. PDFs are parsed by a
+`pdf.js` build fetched only when a PDF is actually dropped; paste and `.txt` need
+nothing. The panel is gated on the static path for the same reason it is private:
+ranking needs every role's skills against one résumé in a single pass, which the
+in-browser backend already has in memory and `/api/search`, answering fifty rows
+at a time, would only have if the résumé were sent to it.
+
+**`kw` could not be what it matches on**, which is the whole reason there is a
+second column. `search.keywords` drops any token more than 4% of the corpus
+carries — deliberately, because those are the tokens that cannot narrow a search.
+That is also precisely where a résumé's vocabulary lives: `python` and `aws` are
+in **0%** of the exported keyword blobs, and in 7 and 6 of 8,852 *titles*. So
+`sk` is a closed list of 72 skills matched against each ad's full description at
+export time, stored as slugs. A hex bitmask over the same vocabulary is 8.0KB
+gzipped against 10.0KB for slugs; the 2KB buys a column where a wrong flag reads
+as `powerbi` in a row that never mentions Power BI, rather than as `a4f01c`.
+
+The manifest ships the vocabulary, the match patterns and a **document frequency
+per skill**, all three because the page cannot derive them. The frequencies are
+what make the ranking mean anything: `python` is in 469 roles and `dbt` in 38, so
+matching `dbt` is worth more, and without that weighting the three commonest
+tools in the index decide every result. The patterns ship rather than being
+retyped in JS for the same reason `data_terms` does — the ad side runs in Python
+and the résumé side runs in the page, and a form one side knows and the other
+does not is a match that silently never happens. `tests/test_skills_parity.py`
+lifts the page's own matching code out of `index.html` and runs it against
+Python's over the whole vocabulary, so that drift fails a test instead of quietly
+mis-ranking.
+
+**There is no "odds of getting hired", and there was never going to be.** It is
+the obvious thing to put next to a ranked job and it would be invented. This
+index has never observed an application, an interview or a hire; it watches
+requisitions appear and disappear, and it has been watching for days rather than
+months. Nothing in it could train such a number or check one. What ships in that
+slot instead is what the index did see: how long the req has been open — which
+the list already carried — and how many identical ones the same board has open.
+The bar on each row is stated, in the panel and on hover, as a share of
+vocabulary relative to the best match in the list.
+
+The duplicate count is also why the ranked list is the one place the index
+**collapses rows**. Identity here is the ATS's own requisition id, so two reqs
+with the same title on one board are two records and the default list shows two
+rows — that is the claim the project rests on. But a ranking is a different lens
+over the same records: every slot in it should be a distinct thing to apply to,
+and two adjacent identical rows each captioned "2 identical reqs" is a caption
+describing what the reader can already see. Collapsed, the AU slice goes from
+8,852 rows to 7,657, and the caption becomes a fact about the role — Culture Amp
+wants two Associate Data Scientists — rather than a warning about the list.
+
+Two numbers the page states rather than hides. **479 roles publish no description
+at all**, so no vocabulary can be read from them and they cannot be ranked either
+way; the footer says so. And only **3,104 of 8,852** name any skill in the
+vocabulary — which is not a gap in the vocabulary but the index being what it
+says it is: every open Australian role, most of which are not data roles and
+correctly match a data résumé on nothing. The list is ranked, never filtered, so
+those roles are still there, still searchable, and say on their own row that they
+share nothing.
 
 ## License
 

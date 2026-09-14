@@ -50,7 +50,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from reqtrace import runs, search  # noqa: E402
+from reqtrace import runs, search, skills  # noqa: E402
 from reqtrace.store import DEFAULT_SQLITE  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -159,9 +159,19 @@ def build(db: Path) -> dict:
     # single line now and renders no excerpt, so the only thing the browser
     # still needs from the body is the ability to match it. A 320-character
     # prefix could not do that — ads name their tools at the end.
-    for job, kw in zip(jobs, search.keywords([j.pop("body") for j in jobs])):
+    bodies = [j.pop("body") for j in jobs]
+    # Two passes over the same text, because they want opposite ends of the
+    # frequency distribution. `kw` keeps what is rare enough to narrow a search;
+    # `sk` keeps a closed list of skills regardless of how common they are,
+    # which is the half a resume is actually written in. Both are read before
+    # the body is dropped — a 320-character prefix could not do either, since
+    # ads name their tools at the end.
+    found = [skills.detect(b) for b in bodies]
+    for job, kw, sk in zip(jobs, search.keywords(bodies), found):
         job["kw"] = kw
+        job["sk"] = skills.pack(sk)
     jobs = [_slim(j) for j in jobs]
+    skill_df = skills.document_frequency(found)
 
     health = runs.health(conn, backend=backend)
     stats = search.stats(conn)
@@ -189,6 +199,19 @@ def build(db: Path) -> dict:
         # role", so the server filter and the static filter cannot drift.
         "data_terms": list(search.DATA_TERMS),
         "analyst_exclude": list(search.ANALYST_EXCLUDE),
+        # The resume matcher's shared vocabulary, and how many roles carry each
+        # term. Both halves are needed and neither can be derived in the page:
+        # the order fixes what `sk` means, and the counts are what stop a match
+        # on `python` — which a data resume and a tenth of the index both hold —
+        # from outweighing a match on `dbt`, which 36 roles hold. Counted over
+        # the exported slice, so it is the denominator the page actually ranks
+        # against.
+        **skills.wire(),
+        "skill_df": skill_df,
+        # Roles whose ad carried no text for either column. They are in the
+        # index and in every filter; they simply cannot be ranked, and the page
+        # says so rather than quietly dropping them.
+        "unrankable": sum(1 for j in jobs if not j.get("sk") and not j.get("kw")),
         "pulse": pulse,
     }
     write = lambda name, obj: (SITE / "data" / name).write_text(  # noqa: E731
