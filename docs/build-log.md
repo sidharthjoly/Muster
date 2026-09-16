@@ -778,9 +778,9 @@ every vendor's token.
 
 ### The schedule, and the two different limits that shaped it
 
-The sweep runs every four hours and the discovery crawl four times a day. How
-it got there is a small lesson in which constraint you are actually optimising
-against, because the answer changed twice.
+The sweep runs every six hours and the discovery crawl twice a day. How it got
+there is a small lesson in which constraint you are actually optimising
+against, because the answer changed three times.
 
 **First constraint: money.** The repo was private, so Actions minutes were
 metered — 3,000 a month on the plan the GitHub Student pack grants. A nightly
@@ -800,9 +800,9 @@ each board is against **its own** interval rather than by raw age:
 
 | tier | definition | interval | boards |
 |---|---|---|---|
-| hot | has posted an AU data role | 6h | 190 |
+| hot | has posted an AU data role | 8h | 190 |
 | warm | ≥25 AU roles, no data role | 24h | 54 |
-| cold | everything else | 72h | 640 |
+| cold | everything else | 96h | 640 |
 
 `hot` is defined by *relevance*, not volume — a board with three roles this
 index cares about outranks one with three hundred it does not. That ordering is
@@ -816,25 +816,61 @@ tuning knob and became a generous safety cap. The knobs are `--interval-hot`,
 
 **Second constraint: politeness.** The repo is public now, so minutes are free
 — and the intervals above are still deliberate, because the limit that always
-mattered was never the bill. **These are other people's servers.** The current
-settings come to ~1,030 board-fetches a day, on the order of 15-20k HTTP
+mattered was never the bill. **These are other people's servers.** 6/24/72 came to ~1,030 board-fetches a day, on the order of 15-20k HTTP
 requests spread over seven vendors and twenty-four hours: a handful per minute
 per vendor, which is a well-behaved client. Ten times that would not be, and no
 amount of free runner time would make it so. Free minutes changed how often
 this runs; they did not change what it is allowed to do.
 
-The sweep runs *more often than the shortest interval* on purpose. Six runs a
-day against a 6-hour hot interval decouples "when a board becomes due" from
-"when a run happens", so a board falling due at 06:00 waits at most four hours
-rather than until tomorrow. The crawl's four slots are placed in the gaps
-between the six sweeps: they share a `reqtrace-pipeline` concurrency group, and
-GitHub keeps only ONE pending run per group and discards an older pending one
-when a newer arrives — so a slot that habitually collided would not queue, it
-would silently skip.
+The sweep runs *more often than the shortest interval* on purpose. Four runs a
+day against an 8-hour hot interval decouples "when a board becomes due" from
+"when a run happens", so a board falling due at 06:00 waits at most six hours
+rather than until tomorrow. The crawl's two slots are placed in the gaps
+between the four sweeps: they share a `reqtrace-pipeline` concurrency group,
+and GitHub keeps only ONE pending run per group and discards an older pending
+one when a newer arrives — so a slot that habitually collided would not queue,
+it would silently skip.
+
+**Third constraint: what the sweep can actually finish.** Both arguments above
+reason about how much traffic it is decent to *send*. Neither asks whether the
+sweep can send it, and for a year it could not. Every scheduled run ended with
+a line nobody read:
+
+```
+budget 400: 400 due now (0 never attempted), 509 not due or held over
+183/183 boards ok in 17696s, 217 skipped (out of time)
+```
+
+183 boards in 4h55m, four runs a day, is about **730 board-fetches a day of
+capacity against 1,030 of demand** — a 40% shortfall, every run, silently. The
+skipped boards were safe (they stay due and sort first next time) which is
+exactly why it went unnoticed: nothing failed, no count was wrong, the tail
+simply never came round. `stalest` re-ranked the same starved cold boards
+behind the same hot tier indefinitely.
+
+The cost centre is Workday, and it is not tunable: `PAGE = 20` is a hard vendor
+cap — ask for 50 and the body comes back empty — so a 2,000-job tenant is 100
+sequential requests before a single Australian role is classified. 526 of the
+909 boards are Workday.
+
+So the intervals moved to 8/24/96, which asks for ~784 a day. That is close
+enough to capacity for the overdue-ranking to absorb the remainder rather than
+re-skip a fixed tail, and it is strictly *less* traffic than before — the
+politeness argument only gets stronger. The schedule moved with it, because
+6 four-hourly slots against a 5-hour job was the same kind of fiction: GitHub
+was discarding two pending sweeps a day and cancelling half the crawls, and
+the workflow comments confidently described 75-minute runs. Four sweeps and
+two crawls is what fits in a day.
+
+The lesson is narrow and worth keeping: a rate limit you set against an
+external constraint still has to be checked against your own throughput.
+Politeness told us what we were *allowed* to fetch. It could not tell us what
+we were *managing* to fetch, and the gap between those two numbers hid for as
+long as it did because every individual run looked like a success.
 
 One casualty is worth naming. `runs.STALE_HOURS` is a single threshold compiled
 into SQL, and boards no longer share one interval, so it sits above the cold
-tier (96h) and means only "nothing has fetched this in four days." It will not
+tier (120h) and means only "nothing has fetched this in five days." It will not
 catch a hot board that died yesterday. The signals that do catch that —
 `last_run` and the `failed`/`incomplete` counts — are tier-independent, so the
 runs page still answers "is the pipeline alive". Comparing per board needs each

@@ -40,7 +40,7 @@ changes three things you can feel while using it:
 | Employer boards watched | **887** |
 | Requisitions seen in total | **287,241** |
 | ATS systems supported | **7** |
-| Refreshed | **6× a day** |
+| Refreshed | **4× a day** |
 
 The biggest employers of data people in there right now are Commonwealth Bank
 (27 open data roles), Canva (16), Westpac (15), Quantium (12) and Xero (11),
@@ -106,7 +106,7 @@ from the board of the company you'd be working for.
   Bank's 27.
 - **479 roles publish no description at all.** They're searchable by title and
   employer, but there's nothing to match a résumé against, and the page says so.
-- **The published site is a snapshot**, rebuilt six times a day. Both pages carry
+- **The published site is a snapshot**, rebuilt four times a day. Both pages carry
   the timestamp of the build you're reading, and `/runs` counts its "N hours ago"
   figures from the export rather than from now.
 

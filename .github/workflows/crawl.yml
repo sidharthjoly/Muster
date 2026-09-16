@@ -6,11 +6,15 @@
 # exits; the next run picks up precisely where this one stopped. The crawl is
 # continuous even though no single process is.
 #
-# Four 45-minute runs a day. The repo is public so runner minutes are free,
-# and the only remaining limit is the one that always mattered: these are other
+# Two 45-minute runs a day. The repo is public so runner minutes are free, and
+# the only remaining limit is the one that always mattered: these are other
 # people's web servers. A 25-page lap plus 20 seconds of rest is ~35 seconds,
-# so this is roughly 4,600 pages a day — about three a minute, spread over
+# so this is roughly 2,300 pages a day — under two a minute, spread over
 # thousands of hosts, and no single host can receive more than 12 pages ever.
+#
+# It was four runs, but the sweep takes 4-5 hours and the two share a
+# concurrency group, so half of them were being cancelled rather than run.
+# Two slots that actually execute beat four that collide.
 #
 # Underneath that, every politeness rule in `crawl.py` still applies per host:
 # robots.txt including Crawl-delay, one request at a time, a declared
@@ -20,15 +24,23 @@ name: Crawl for employers
 
 on:
   schedule:
-    # Four times a day, in the gaps between the six sweeps (which run at :30
-    # past 03/07/11/15/19/23 and take roughly 75 minutes).
+    # Twice a day, in the gaps between the four sweeps (which start at :30
+    # past 00/06/12/18 and run 4-5 hours, not the 75 minutes this comment
+    # used to assume).
     #
     # The shared `reqtrace-pipeline` concurrency group is what actually
     # guarantees they do not overlap — but GitHub keeps only ONE pending run
     # per group and discards an older pending one when a newer arrives, so a
     # slot that habitually collided would not merely wait, it would silently
-    # skip crawls. Landing in a real gap keeps the queue empty.
-    - cron: "10 1,9,13,21 * * *"
+    # skip crawls. That is exactly what four slots against six sweeps did:
+    # four crawls cancelled outright over two days.
+    #
+    # 05:10 and 17:10 queue behind a sweep that started at 00:30 / 12:30 and
+    # is finishing, so the crawl starts as that sweep ends and is done before
+    # the next one is due. If a sweep overruns and this is dropped, it costs
+    # nothing — the frontier lives in Postgres, so the next crawl resumes
+    # precisely where the last one stopped. That is the whole design.
+    - cron: "10 5,17 * * *"
   workflow_dispatch:
     inputs:
       minutes:

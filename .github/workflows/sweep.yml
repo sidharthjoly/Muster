@@ -11,19 +11,31 @@ name: Sweep and publish
 
 on:
   schedule:
-    # Every four hours. `stalest` ranks boards by how overdue they are against
+    # Every six hours. `stalest` ranks boards by how overdue they are against
     # their *own* interval, so a run fetches only what is genuinely due — the
-    # ~190 boards that post Australian data roles every 6h, the tail every 3
+    # ~190 boards that post Australian data roles every 8h, the tail every 4
     # days — and the extra runs cost roughly what the hot tier costs rather
     # than a multiple of the whole index.
     #
-    # Running more often than the shortest interval is deliberate: it decouples
-    # "when a board becomes due" from "when a run happens", so a board due at
-    # 06:00 waits at most 4 hours rather than until the next daily slot.
+    # This was every four hours, and that was fiction. A run takes 4-5 hours
+    # (measured: 183 boards in 17,696s), so the 4-hourly slots queued against
+    # the `reqtrace-pipeline` concurrency group and GitHub — which keeps only
+    # ONE pending run per group — discarded the older pending one each time.
+    # Six scheduled runs produced four actual runs a day, and the two it threw
+    # away were invisible: nothing failed, the count was simply wrong. The
+    # crawl lost the same argument from the other side and was cancelled
+    # outright on four occasions.
     #
-    # 19:30 UTC = 05:30 in Sydney during AEST, so the original nightly slot is
-    # still one of the six and the morning view is unchanged.
-    - cron: "30 3,7,11,15,19,23 * * *"
+    # Six hours is what the sweep can actually hold, so the schedule now says
+    # what happens. Running more often than the shortest interval is still the
+    # point — it decouples "when a board becomes due" from "when a run
+    # happens", so a board due at 06:00 waits at most 6 hours rather than
+    # until the next daily slot — but claiming a cadence the job cannot finish
+    # in buys nothing and hides the crawl being squeezed out.
+    #
+    # 18:30 UTC = 04:30 in Sydney during AEST, so the overnight slot that
+    # feeds the morning view is still one of the four.
+    - cron: "30 0,6,12,18 * * *"
   workflow_dispatch:
     inputs:
       max_boards:

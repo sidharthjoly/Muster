@@ -140,11 +140,26 @@ def configured_boards(vendor: str) -> list[str]:
 #: The arithmetic that matters: a tier of N boards on an H-hour interval is
 #: `N * 24/H` board-fetches a day, and one board-fetch is anywhere from a
 #: single request to ~230 for a large paged Workday tenant. At 190/54/640
-#: boards these intervals come to ~1,030 board-fetches a day — on the order of
-#: 15-20k HTTP requests spread over seven vendors and twenty-four hours, which
-#: is a handful per minute per vendor. That is a well-behaved client. Ten times
-#: it would not be, and no amount of free runner time would make it so.
-DEFAULT_INTERVALS = {"hot": 6.0, "warm": 24.0, "cold": 72.0}
+#: boards, 6/24/72 came to ~1,030 board-fetches a day — on the order of 15-20k
+#: HTTP requests spread over seven vendors and twenty-four hours, which is a
+#: handful per minute per vendor. That is a well-behaved client. Ten times it
+#: would not be, and no amount of free runner time would make it so.
+#:
+#: What that reasoning never checked is whether the sweep can actually deliver
+#: what it asks for. Measured: 183 boards in 17,696s of a 270-minute deadline,
+#: four runs a day — about 730 board-fetches a day of capacity against 1,030
+#: of demand. The shortfall showed up as `217 skipped (out of time)` on every
+#: run: the hot tier alone (190 × 4) very nearly ate the whole budget, so the
+#: cold tail was starved by boards that were not, in fact, going to be fetched
+#: on the interval the table claimed.
+#:
+#: 8/24/96 asks for ~784 a day instead. That is close enough to capacity for
+#: `stalest`'s overdue-ranking to absorb the remainder, rather than 40% over
+#: it where the ranking just re-skips the same tail. It is also strictly less
+#: traffic than before, so the politeness argument above only gets stronger —
+#: the binding constraint simply turned out to be Workday's 20-jobs-per-request
+#: cap, not anyone's patience.
+DEFAULT_INTERVALS = {"hot": 8.0, "warm": 24.0, "cold": 96.0}
 
 
 def _age_hours(when, now) -> float:

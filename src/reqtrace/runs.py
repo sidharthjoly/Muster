@@ -27,10 +27,15 @@ import sqlite3
 # Australian data roles, a week for the tail), so there is no single correct
 # threshold at all.
 #
-# 96 hours is the cold tier's 72-hour interval plus margin, which makes this
-# number mean one specific thing: **a board nothing has fetched in four days,
+# 120 hours is the cold tier's 96-hour interval plus margin, which makes this
+# number mean one specific thing: **a board nothing has fetched in five days,
 # which not even the slowest tier can explain.** It will not catch a hot board
 # that quietly died yesterday.
+#
+# It tracks the cold interval and has to keep tracking it. When that interval
+# went 72h -> 96h this sat at 96, which would have reported every cold board
+# that was merely due — the slowest tier explaining the alarm — as stale. The
+# margin is the whole point: equal is already wrong.
 #
 # That is a real gap and it is survivable, because it is not the primary
 # signal. `summary()` also reports `last_run` (the schedule stopping shows up
@@ -38,7 +43,7 @@ import sqlite3
 # there regardless of tier). Closing the gap properly means recording each
 # board's target interval on its `board_runs` row and comparing per-board in
 # SQL — worth doing when the runs page next gets attention.
-STALE_HOURS = 96
+STALE_HOURS = 120
 
 # The four places these two dialects actually differ for these queries. Kept as
 # a lookup rather than an ORM because `store.py` already branches inline on
