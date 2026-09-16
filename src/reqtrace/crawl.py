@@ -95,15 +95,22 @@ def canonicalise(href: str, base: str | None = None) -> str | None:
         return None
     if base:
         href = urllib.parse.urljoin(base, href)
+    # `urlsplit` is lazy: it accepts any netloc and only validates it when
+    # the host and port are read off, so both accessors belong inside the
+    # guard rather than the split alone. A cookie banner's
+    # `//javascript:Cookiebot.renew()` parses as host `javascript` with port
+    # `Cookiebot.renew()` and raises here -- and since this runs per link per
+    # page, an uncaught raise took down a whole 45-minute crawl run rather
+    # than skipping the one bad href.
     try:
         p = urllib.parse.urlsplit(href)
+        hostname, port = p.hostname, p.port
     except ValueError:
         return None
-    if p.scheme.lower() not in _HTTP or not p.hostname:
+    if p.scheme.lower() not in _HTTP or not hostname:
         return None
 
-    host = p.hostname.lower().rstrip(".")
-    port = p.port
+    host = hostname.lower().rstrip(".")
     netloc = host if port in (None, 80, 443) else f"{host}:{port}"
 
     path = urllib.parse.quote(urllib.parse.unquote(p.path), safe="/:@!$&'()*+,;=~-._")

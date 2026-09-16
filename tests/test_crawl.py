@@ -50,6 +50,27 @@ def test_canonicalise_rejects_what_is_not_a_page():
         assert canonicalise(href, "https://acme.com/") is None
 
 
+def test_canonicalise_survives_a_netloc_it_cannot_parse():
+    # `urlsplit` defers netloc validation to `.hostname`/`.port`, so a bad
+    # port only raises when it is read. Real example, off a live careers page:
+    # a cookie banner's `//javascript:Cookiebot.renew()`, which parses as host
+    # `javascript` with port `Cookiebot.renew()`.
+    for href in ("//javascript:Cookiebot.renew()",
+                 "http://javascript:Cookiebot.renew()",
+                 "https://acme.com:notaport/careers"):
+        assert canonicalise(href, "https://acme.com/") is None
+
+
+def test_one_unparseable_link_does_not_cost_the_rest_of_the_page():
+    # The regression that matters: this is called per link per page, so an
+    # href that raises used to end the crawl run, not merely skip the link.
+    html = ('<a href="/careers">Careers</a>'
+            '<a href="//javascript:Cookiebot.renew()">Cookie settings</a>'
+            '<a href="/about">About us</a>')
+    assert [u for u, _ in extract_links(html, "https://acme.com/")] == \
+        ["https://acme.com/careers", "https://acme.com/about"]
+
+
 def test_canonicalise_resolves_relative_links():
     assert canonicalise("../jobs", "https://acme.com/about/careers") == \
         "https://acme.com/jobs"

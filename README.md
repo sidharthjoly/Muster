@@ -143,7 +143,7 @@ Two things to know about the local UI:
 python scripts/export_static.py --serve     # http://127.0.0.1:8766
 ```
 
-Tests: `uv run pytest` — 284 of them, no network required.
+Tests: `uv run pytest` — 286 of them, no network required.
 
 ## How it works
 
