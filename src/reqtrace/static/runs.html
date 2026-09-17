@@ -2,252 +2,420 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ReqTrace · ingest health</title>
+<meta name="description" content="Which employer boards ReqTrace has fetched, how completely, and how recently.">
+<!-- Barlow is the Industry system's face. It is loaded as an enhancement, not
+     a dependency: this page ships as part of a static export that has to work
+     from disk with no network, so every font token falls back to the platform
+     UI face. Same treatment as index.html. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap">
 <style>
+  /* ── Industry design system ──────────────────────────────────────────────
+     The console half of the site, on the same tokens as index.html. There was
+     no composition for this page — the design project lists the ingest health
+     console as "not yet designed" — so it is derived from the system's own
+     rules: square corners, hairline borders, blueprint registration marks on
+     every panel, steel accent, Barlow Condensed over Barlow.
+
+     The block below — from `:root` through `header.bar`, tokens, base type,
+     .blueprint/.corner, .btn and .nav — is copied verbatim from index.html
+     rather than linked, for the same reason it is inlined there: the export
+     copies named page files into `site/` and a sibling stylesheet would
+     neither be copied nor resolve from a file:// open.
+
+     Nothing enforces that the two copies agree, so edit both. The block is
+     fenced by START/END marker comments in each file; this compares them and
+     is silent when they match (the pattern is anchored to the start of the
+     line so it matches the markers, not this sentence):
+
+         cd src/reqtrace/static
+         diff <(sed -n '/^  \/\* ==== SHARED/,/END ====/p' index.html) \
+              <(sed -n '/^  \/\* ==== SHARED/,/END ====/p' runs.html)
+
+     Everything after the END marker is this page's own.
+
+     One deliberate departure from the system: this page reports status, so it
+     needs more than one signal colour. Complete/incomplete/failed are carried
+     as accent, neutral and a desaturated clay — the clay is the only hue on
+     the site outside the steel, and it is here because "failed" has to be
+     legible as bad without reading the number next to it. */
+  /* ==== SHARED WITH THE OTHER PAGE — START. Edit both, then run the
+     check in runs.html's header comment. ==== */
   :root {
-    /* The search page's palette, lifted unchanged: warm sand ground, one
-       burnt-orange accent and one olive. This page was a dark console, on the
-       argument that the visual break was honest — it said you had left the
-       product. It read as a different product instead, so the break is gone
-       and the room is the same one.
+    --color-bg:#f2f2f3;
+    --color-surface:#e9e9ea;
+    --color-text:#1d1f20;
+    --color-accent:#5980a6;
+    --color-divider:color-mix(in srgb, #1d1f20 16%, transparent);
 
-       What survives the repaint is the thing the monochrome was actually for:
-       green/amber/red is the canonical colourblind trap, so board state is
-       still a word plus a fill weight (solid / muted / outline) and hue never
-       carries it. The two hues here count openings against closures on the
-       churn chart, exactly as they do on the search page, where the pair is
-       labelled and ordered rather than relied on. */
-    --ground:#e6dcc8; --card:#f5ead8; --sunk:#ebddc5;
-    --ink:#201e1d;
-    --ink-70:rgba(32,30,29,.7); --ink-55:rgba(32,30,29,.55);
-    --ink-45:rgba(32,30,29,.45); --ink-20:rgba(32,30,29,.2);
-    --ink-12:rgba(32,30,29,.12); --ink-07:rgba(32,30,29,.07);
-    --accent:#c67139; --accent-deep:#b2622d; --accent-ink:#8c491a;
-    --olive:#8fa073; --olive-deep:#7a8a5e; --olive-pale:#ccdbb2;
-    --shadow:0 3px 10px rgba(46,43,37,.16);
-    /* One family, and no webfont: this page also ships as a static export that
-       has to work as a file opened from disk. */
-    --sans:Figtree,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-    /* Board tokens, vendor errors and the raw log are machine strings and stay
-       in a machine face. The search page has no mono content; that is not a
-       reason to set a board token in prose. */
-    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    /* Tonal ramps — one shared OKLCH lightness scale, so the same step of any
+       role matches the others in visual value. */
+    --color-neutral-100:#f5f5f8; --color-neutral-200:#e7e7ea;
+    --color-neutral-300:#d4d4d7; --color-neutral-400:#b7b7ba;
+    --color-neutral-500:#98989b; --color-neutral-600:#7a7a7d;
+    --color-neutral-700:#5d5d60; --color-neutral-800:#424244;
+    --color-neutral-900:#2b2b2d;
+
+    --color-accent-100:#eef6ff; --color-accent-200:#d6ebff;
+    --color-accent-300:#b5d9fd; --color-accent-400:#94bce3;
+    --color-accent-500:#749dc4; --color-accent-600:#597ea3;
+    --color-accent-700:#416180; --color-accent-800:#2c455d;
+    --color-accent-900:#1d2d3d;
+
+    --font-heading:"Barlow Condensed",system-ui,-apple-system,'Segoe UI',sans-serif;
+    --font-heading-weight:600;
+    --font-body:Barlow,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+
+    --space-1:3.4px; --space-2:6.8px; --space-3:10.2px;
+    --space-4:13.6px; --space-6:20.4px; --space-8:27.2px;
+
+    --radius-sm:2px; --radius-md:4px; --radius-lg:7px;
+
+    --shadow-sm:0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
+    --shadow-md:0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent);
+    --shadow-lg:0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
+
+    /* Page-local: the two dial series. `opened` is the accent, `closed` a
+       neutral — the system is mono, so the second series is a value step
+       rather than a second hue. */
+    --up:var(--color-accent);
+    --dn:var(--color-neutral-400);
   }
-  * { box-sizing:border-box; }
+
+  *, *::before, *::after { box-sizing:border-box; }
   html { -webkit-text-size-adjust:100%; }
-  body { margin:0; background:var(--ground); color:var(--ink);
-    font:14px/1.6 var(--sans); -webkit-font-smoothing:antialiased; }
-  a { color:inherit; text-decoration:none; }
-  ::selection { background:rgba(198,113,57,.25); }
-  :focus-visible { outline:2px solid var(--accent-ink); outline-offset:3px;
-    border-radius:6px; }
+  body { margin:0; background:var(--color-bg); color:var(--color-text);
+    font-family:var(--font-body); font-size:15px; line-height:1.55;
+    font-weight:400; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); line-height:1.12;
+    letter-spacing:-0.015em; margin:0 0 var(--space-2); }
+  h1 { font-size:42px; } h2 { font-size:32px; } h3 { font-size:25px; }
+  h4 { font-size:20px; } h5 { font-size:16px; }
+  h6 { font-size:13px; letter-spacing:0.08em; text-transform:uppercase; }
+  p { margin:0 0 var(--space-3); }
+  a { color:var(--color-accent); text-underline-offset:3px; }
+  a:hover { color:var(--color-accent-700); }
+  .text-muted { color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  :focus { outline:none; }
+  :focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }
+  ::selection { background:color-mix(in srgb, var(--color-accent) 30%, transparent); }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden;
+    clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
 
-  .page { max-width:1000px; margin:0 auto; padding:26px 20px 40px;
-    display:flex; flex-direction:column; gap:18px; }
-  .card { background:var(--card); border:1px solid rgba(32,30,29,.1);
-    border-radius:28px; box-shadow:var(--shadow); overflow:hidden; }
+  /* — blueprint frame: the wireframe object every figure and panel wears — */
+  .blueprint { position:relative; border:1px solid var(--color-divider);
+    border-radius:0; }
+  .blueprint > .corner { position:absolute; width:11px; height:11px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .blueprint > .corner::before, .blueprint > .corner::after {
+    content:""; position:absolute; background:currentColor; }
+  .blueprint > .corner::before { left:5px; top:0; width:1px; height:100%; }
+  .blueprint > .corner::after { top:5px; left:0; width:100%; height:1px; }
+  .blueprint > .corner.tl { top:-6px; left:-6px; }
+  .blueprint > .corner.tr { top:-6px; right:-6px; }
+  .blueprint > .corner.bl { bottom:-6px; left:-6px; }
+  .blueprint > .corner.br { bottom:-6px; right:-6px; }
 
-  /* ---- masthead ---- */
-  .top { display:flex; align-items:center; gap:13px; padding:26px 34px 0;
+  /* — buttons — */
+  .btn { display:inline-flex; align-items:center; justify-content:center;
+    gap:6px; cursor:pointer; text-decoration:none;
+    font-family:var(--font-heading); font-weight:var(--font-heading-weight);
+    font-size:14px; line-height:1.2; color:var(--color-text);
+    background:transparent; border:1px solid var(--color-divider);
+    padding:var(--space-2) calc(var(--space-3) * 1.2); border-radius:0; }
+  .btn svg { display:block; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .btn-primary { background:var(--color-accent); color:var(--color-bg);
+    border-color:var(--color-accent); }
+  .btn-primary:hover { background:var(--color-accent-600); }
+  .btn-primary:active { background:var(--color-accent-700); }
+  .btn-secondary:hover { background:color-mix(in srgb, var(--color-text) 7%, transparent); }
+  .btn-secondary:active { background:color-mix(in srgb, var(--color-text) 14%, transparent); }
+
+  /* — the header bar — */
+  .nav { display:flex; align-items:center; gap:var(--space-6);
+    max-width:1160px; margin:0 auto; padding:var(--space-3) var(--space-6); }
+  .nav-brand { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:17px;
+    letter-spacing:.02em; margin-right:auto; color:inherit;
+    text-decoration:none; }
+  .nav-brand em { font-style:normal; color:var(--color-accent); }
+  .nav a { color:inherit; text-decoration:none; font-size:14px; }
+  .nav a:hover, .nav a[aria-current='page'] { color:var(--color-accent); }
+  header.bar { border-bottom:1px solid var(--color-divider);
+    background:var(--color-bg); }
+  /* ==== SHARED WITH THE OTHER PAGE — END ==== */
+
+
+  /* — status roles. The one place this site carries a hue that is not the
+       steel accent: a failed board has to read as bad before the number
+       beside it is read. Clay is desaturated to sit on the same ground. — */
+  :root {
+    --ok:var(--color-accent);
+    --inc:var(--color-neutral-400);
+    /* Three steps, mirroring how the system's own ramps are used: a tint for
+       fills, a base for swatches and rules, a deep step for text. The base is
+       4.09:1 on the tint — fine for a 9px swatch, under the 4.5 a 10px label
+       needs — which is exactly the split the readme asks for when it says to
+       set paragraph-size accent text in a deep ramp step. */
+    --bad-tint:#f0e2dd;
+    --bad:#a8563f;
+    --bad-ink:#8f4430;
+  }
+
+  /* — the shell — */
+  .page { max-width:1160px; margin:0 auto; padding:var(--space-6);
+    display:flex; flex-direction:column; gap:var(--space-6); }
+  /* Every panel here is a blueprint object, so it wears `.blueprint` and
+     carries the four corner marks — the frame and the marks are defined once,
+     in the shared block, and `.card` adds only what is its own. The marks are
+     drawn outside the box, so the page needs room for them: hence the gap
+     between cards and the padding on .page. */
+  .card { padding:var(--space-6); background:transparent; }
+  .duo { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:var(--space-6); align-items:start; }
+
+  /* — the masthead, matching index.html — */
+  .top { display:flex; align-items:center; gap:var(--space-6);
     flex-wrap:wrap; }
-  .mark { font-size:22px; font-weight:700; letter-spacing:-.03em; line-height:1; }
-  .mark em { font-style:normal; color:var(--accent-deep); }
-  .scope { font-size:12px; color:var(--ink-55); }
-  .swept { margin-left:auto; display:flex; align-items:center; gap:8px;
-    font-size:11.5px; color:var(--ink-55); }
-  .swept i { width:7px; height:7px; border-radius:50%; background:var(--olive-deep); }
-  .swept.cold i { background:#b06a4a; }
-  .back { display:inline-flex; align-items:center; gap:7px; height:31px; padding:0 14px;
-    border:1px solid var(--ink-20); border-radius:999px; font-size:12.5px;
-    color:var(--ink); transition:background .2s, border-color .2s; }
-  .back:hover { background:rgba(32,30,29,.06); border-color:var(--ink-45); }
+  .mark { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:17px;
+    letter-spacing:.02em; color:inherit; text-decoration:none; }
+  .mark em { font-style:normal; color:var(--color-accent); }
+  .scope { font-size:12px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .swept { margin-left:auto; display:flex; align-items:center; gap:7px;
+    font-size:11.5px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .swept i { width:7px; height:7px; background:var(--color-accent);
+    display:inline-block; }
+  .swept.cold i { background:var(--color-neutral-500); }
 
-  /* ---- freshness: the one number this page exists to answer ---- */
-  .hero { display:flex; flex-wrap:wrap; gap:18px 40px; align-items:flex-end;
-    padding:24px 34px 0; }
-  .hero .k, .railhead { font-size:10.5px; letter-spacing:.12em;
-    text-transform:uppercase; color:var(--ink-45); }
-  .hero .big { font-size:42px; font-weight:700; letter-spacing:-.035em; line-height:.95;
-    font-variant-numeric:tabular-nums; margin-top:9px; }
-  .hero .when { font-size:12px; line-height:1.6; color:var(--ink-55); margin-top:9px; }
-  .hero .right { margin-left:auto; display:flex; flex-direction:column; gap:10px;
-    align-items:flex-start; }
-  .hero .exp { font-size:11.5px; line-height:1.6; color:var(--ink-55); max-width:34ch;
-    text-wrap:pretty; }
-  /* Word first, dot second: solid, muted, outline — never a hue. */
-  .badge { display:inline-flex; align-items:center; gap:9px; height:32px; padding:0 15px;
-    border:1px solid var(--ink-20); border-radius:999px; font-size:12.5px; font-weight:600; }
-  .badge i { width:8px; height:8px; border-radius:50%; background:var(--ink); }
-  .badge.is-degraded i { background:var(--ink-45); }
-  .badge.is-bad i { background:transparent; border:1.5px solid var(--ink); }
+  /* — hero: the one number the page exists to answer — */
+  .hero { display:flex; align-items:flex-start; gap:var(--space-6);
+    flex-wrap:wrap; margin-top:var(--space-6); }
+  .hero .k, .tile .k { font-size:10.5px; letter-spacing:.12em;
+    text-transform:uppercase;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .hero .big { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:40px; line-height:1.05;
+    letter-spacing:-.02em; margin-top:var(--space-1); }
+  .hero .when { font-size:12px; margin-top:var(--space-2);
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .hero .right { margin-left:auto; text-align:right; max-width:40ch; }
+  .hero .exp { font-size:12px; margin-top:var(--space-2);
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .badge { display:inline-flex; align-items:center; gap:7px; padding:4px 11px;
+    border:1px solid var(--color-divider); font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:13px;
+    letter-spacing:.04em; text-transform:uppercase; }
+  .badge i { width:8px; height:8px; display:inline-block; }
+  .badge.is-ok i { background:var(--ok); }
+  .badge.is-degraded i { background:var(--inc); }
+  .badge.is-bad { border-color:var(--bad); color:var(--bad-ink); }
+  .badge.is-bad i { background:var(--bad); }
 
-  /* ---- the sweep's own pulse ---- */
-  .pulse { padding:22px 34px 0; }
+  /* — the sweep sparkline — */
+  .pulse { margin-top:var(--space-6); }
   .pulse[hidden] { display:none; }
-  .railhead { margin-bottom:11px; }
-  .well { background:var(--sunk); border-radius:24px; padding:13px 12px 11px; }
-  .spark { display:flex; gap:4px; height:42px; align-items:flex-end; }
-  .spark span { flex:1; min-height:3px; border-radius:5px 5px 0 0;
-    background:var(--olive); }
-  .spark span.last { background:var(--accent); }
-  .cap { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
-    color:var(--ink-45); margin-top:10px; }
+  .railhead { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent);
+    margin-bottom:var(--space-2); }
+  .well { border:1px solid var(--color-divider); padding:var(--space-3); }
+  .spark { display:flex; align-items:flex-end; gap:3px; height:42px; }
+  .spark span { flex:1; background:var(--color-neutral-400); min-width:2px; }
+  /* The most recent fetch is the one the reader is looking for. */
+  .spark span.last { background:var(--color-accent); }
+  .cap { font-size:11px; margin-top:var(--space-2);
+    color:color-mix(in srgb, var(--color-text) 45%, transparent); }
 
-  /* ---- tiles ---- */
-  .tiles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px 28px;
-    margin-top:26px; padding:26px 34px 30px; border-top:1px solid rgba(32,30,29,.14); }
-  .tile .k { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
-    color:var(--ink-45); }
-  .tile .v { font-size:32px; font-weight:700; letter-spacing:-.03em; line-height:1.05;
-    font-variant-numeric:tabular-nums; margin-top:8px; }
-  .tile .v.quiet { color:var(--ink-45); }
-  .tile .sub { font-size:11.5px; color:var(--ink-55); margin-top:4px;
-    font-variant-numeric:tabular-nums; }
+  /* — the tile row — */
+  .tiles { display:grid; grid-template-columns:repeat(6, minmax(0,1fr));
+    gap:0; margin-top:var(--space-6);
+    border-top:1px solid var(--color-divider); }
+  /* Equal cells with visible rules: the grid is the system's whole idea of
+     structure, so the tiles are divided rather than floated apart. */
+  .tile { padding:var(--space-4) var(--space-3); }
+  .tile + .tile { border-left:1px solid var(--color-divider); }
+  .tile .v { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:26px; line-height:1.1;
+    margin-top:var(--space-1); font-variant-numeric:tabular-nums; }
+  .tile .v.quiet { color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .tile .sub { font-size:11px; margin-top:2px;
+    color:color-mix(in srgb, var(--color-text) 45%, transparent); }
 
-  /* ---- panels ---- */
-  .duo { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
-    gap:18px; align-items:stretch; }
-  .duo .card { display:flex; flex-direction:column; }
-  .panel-h { display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-    padding:17px 26px; border-bottom:1px solid var(--ink-12); font-size:10.5px;
-    letter-spacing:.12em; text-transform:uppercase; color:var(--ink-45); }
-  .panel-h .legend { margin-left:auto; }
-  .legend { display:flex; gap:15px; flex-wrap:wrap; font-size:10.5px;
-    letter-spacing:.12em; text-transform:uppercase; color:var(--ink-45); }
-  .legend span { display:inline-flex; align-items:center; gap:6px; }
-  .legend i { width:10px; height:8px; border-radius:2px; display:inline-block; }
-  .sw-ok { background:var(--ink-70); }
-  .sw-inc { background:var(--ink-45); }
-  .sw-bad { border:1px solid var(--ink-45); }
-  .sw-new { background:var(--accent); }
-  .sw-closed { background:var(--olive); }
-  .note { font-size:11.5px; line-height:1.65; color:var(--ink-55); text-wrap:pretty; }
-  .note b { color:var(--ink-70); font-weight:600; }
-  .note.lead { padding:16px 26px 0; margin:0; }
-  #snapshot-note:empty { display:none; }
-  #snapshot-note .note { padding:0 10px; }
+  /* — panel headings and legends — */
+  .panel-h { display:flex; align-items:baseline; gap:var(--space-4);
+    flex-wrap:wrap; font-size:13px; letter-spacing:.08em;
+    text-transform:uppercase; font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); }
+  .legend { margin-left:auto; display:flex; gap:var(--space-4);
+    font-size:11px; letter-spacing:0; text-transform:none;
+    font-family:var(--font-body); font-weight:400;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .legend span { display:inline-flex; align-items:center; gap:5px; }
+  .legend i { width:8px; height:8px; display:inline-block; }
+  .sw-ok { background:var(--ok); } .sw-inc { background:var(--inc); }
+  .sw-bad { background:var(--bad); }
+  .sw-new { background:var(--color-accent); }
+  .sw-closed { background:var(--color-neutral-400); }
+  .note { font-size:12px; line-height:1.6;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .note b { font-weight:500;
+    color:color-mix(in srgb, var(--color-text) 78%, transparent); }
+  .note.lead { margin:var(--space-3) 0 var(--space-4); max-width:82ch; }
 
-  /* ---- vendor table ---- */
+  /* — the vendor table — */
   .scroll { overflow-x:auto; }
-  table { border-collapse:collapse; width:100%; font-size:13px;
-    font-variant-numeric:tabular-nums; }
-  th { text-align:right; padding:13px 14px; border-bottom:1px solid var(--ink-12);
-    font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-45);
-    font-weight:500; white-space:nowrap; }
-  td { text-align:right; padding:11px 14px; border-bottom:1px solid var(--ink-07);
+  #vendors { width:100%; border-collapse:collapse; font-size:13.5px;
+    min-width:760px; }
+  #vendors th { text-align:right; font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; padding:var(--space-2);
+    color:color-mix(in srgb, var(--color-text) 60%, transparent);
+    border-bottom:1px solid var(--color-divider); white-space:nowrap; }
+  #vendors th:first-child { text-align:left; }
+  #vendors td { padding:var(--space-3) var(--space-2); text-align:right;
+    font-variant-numeric:tabular-nums;
+    border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+  #vendors tbody tr:hover { background:color-mix(in srgb, var(--color-text) 4%, transparent); }
+  #vendors .vendor { text-align:left; font-weight:500; }
+  /* Counts that are context rather than the point: fetched, new, closed and
+     the age. Dimmed so the health columns read first. */
+  #vendors .q { color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  /* Was an inline `color:var(--ink-70)` from the old theme — a class now, so
+     the markup carries no colour of its own. */
+  #vendors .ok { color:color-mix(in srgb, var(--color-text) 78%, transparent); }
+  .hbar { display:flex; height:9px; min-width:70px;
+    border:1px solid var(--color-divider); }
+  .hbar span { display:block; }
+  .s-ok { background:var(--ok); } .s-inc { background:var(--inc); }
+  .s-bad { background:var(--bad); }
+
+  /* — needs attention — */
+  .probs { display:flex; flex-direction:column; gap:var(--space-3);
+    margin-top:var(--space-4); }
+  .prob { border-left:2px solid var(--inc); padding:var(--space-2) 0
+    var(--space-2) var(--space-3); }
+  .prob:has(.st.failed) { border-left-color:var(--bad); }
+  .prob .top { display:flex; align-items:baseline; gap:var(--space-2);
+    flex-wrap:wrap; }
+  .prob .tok { font-size:13px; font-weight:500; word-break:break-all; }
+  .prob .rows { margin-left:auto; font-size:11.5px; white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+    color:color-mix(in srgb, var(--color-text) 45%, transparent); }
+  .prob .detail { font-size:12px; margin-top:3px; word-break:break-word;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .st { font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+    padding:2px 7px; background:var(--color-neutral-200);
+    color:var(--color-neutral-800); }
+  .st.failed { background:var(--bad-tint); color:var(--bad-ink); }
+  .st.complete { background:var(--color-accent-100); color:var(--color-accent-800); }
+  .empty { font-size:13px; margin-top:var(--space-4);
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+
+  /* — churn — */
+  .chart { margin-top:var(--space-4); }
+  .plot { display:flex; align-items:flex-end; gap:var(--space-3);
+    height:118px; }
+  .day { flex:1; display:flex; flex-direction:column; align-items:center;
+    gap:var(--space-2); min-width:0; }
+  .pair { display:flex; align-items:flex-end; gap:2px; height:104px; }
+  .pair span { width:13px; display:block; }
+  .n-new { background:var(--color-accent); }
+  .n-closed { background:var(--color-neutral-400); }
+  .lab { font-size:10px; white-space:nowrap;
+    color:color-mix(in srgb, var(--color-text) 45%, transparent); }
+  .hr { height:1px; background:var(--color-divider); margin:var(--space-3) 0; }
+  .foot { font-size:11px; line-height:1.6; margin:0;
+    color:color-mix(in srgb, var(--color-text) 45%, transparent); }
+  #churn-table { width:100%; border-collapse:collapse; font-size:12.5px;
+    margin-top:var(--space-3); }
+  #churn-table th { text-align:right; font-size:10px; letter-spacing:.08em;
+    text-transform:uppercase; padding:var(--space-2);
+    color:color-mix(in srgb, var(--color-text) 60%, transparent);
+    border-bottom:1px solid var(--color-divider); }
+  #churn-table th:first-child { text-align:left; }
+  #churn-table td { padding:5px var(--space-2); text-align:right;
+    font-variant-numeric:tabular-nums;
+    border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+  #churn-table td:first-child { text-align:left; }
+  /* A count of nothing is not the same news as a count. `num()` renders the
+     two apart, and the repaint onto the Industry tokens dropped the pair of
+     rules that made them look apart — restored here on the new ramp. */
+  .up { color:var(--color-text); }
+  .zero { color:var(--color-neutral-500); }
+
+  /* — the raw log — */
+  details.card > summary { cursor:pointer; font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:13px;
+    letter-spacing:.08em; text-transform:uppercase; list-style:none; }
+  details.card > summary::-webkit-details-marker { display:none; }
+  details.card > summary::before { content:"+ "; color:var(--color-accent); }
+  details.card[open] > summary::before { content:"− "; }
+  details.card > summary:hover { color:var(--color-accent); }
+  .log { margin-top:var(--space-4); display:flex; flex-direction:column;
+    max-height:420px; overflow-y:auto; }
+  .log .row { display:flex; align-items:baseline; gap:var(--space-3);
+    padding:5px 0; font-size:12px;
+    border-bottom:1px solid color-mix(in srgb, var(--color-text) 7%, transparent); }
+  .log .row > span:first-child { font-variant-numeric:tabular-nums;
+    color:color-mix(in srgb, var(--color-text) 45%, transparent);
     white-space:nowrap; }
-  th:first-child, td:first-child { text-align:left; padding-left:26px; }
-  th:last-child, td:last-child { padding-right:26px; }
-  tbody tr:hover { background:rgba(32,30,29,.05); }
-  tbody tr:last-child td { border-bottom:0; }
-  .vendor { font-weight:600; font-size:13.5px; text-transform:capitalize; }
-  .q { color:var(--ink-45); }
-  .zero { color:var(--ink-45); }
-  .up { color:var(--ink); }
-  /* Segments are separated by a 2px gap so adjacent fills never read as one,
-     each carries its own title, and the bar as a whole is labelled — the fill
-     weight is a second cue, not the only one. */
-  .bar { display:flex; gap:2px; height:9px; width:132px; background:var(--ink-07);
-    border-radius:999px; }
-  .bar span { min-width:5px; border-radius:999px; }
-  .bar .s-ok { background:var(--ink-70); }
-  .bar .s-inc { background:var(--ink-45); }
-  .bar .s-bad { border:1px solid var(--ink-45); box-sizing:border-box; }
+  .log .b { font-weight:500; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; max-width:30ch; }
+  .log .s { color:color-mix(in srgb, var(--color-text) 55%, transparent);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .log .st { margin-left:auto; flex:none; }
 
-  /* ---- needs attention ---- */
-  .probs { display:flex; flex-direction:column; }
-  .prob { padding:15px 26px; border-bottom:1px solid var(--ink-07); display:flex;
-    flex-direction:column; gap:7px; }
-  .prob:last-child { border-bottom:0; }
-  .prob .top { display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; padding:0; }
-  .prob .tok { font-family:var(--mono); font-size:12px; overflow-wrap:anywhere; }
-  .prob .st { font-size:10px; letter-spacing:.12em; text-transform:uppercase;
-    padding:2px 9px; border:1px solid var(--ink-20); border-radius:999px;
-    color:var(--ink-70); }
-  .prob .st.failed { background:var(--ink); border-color:var(--ink); color:var(--card); }
-  .prob .rows { margin-left:auto; font-size:11.5px; color:var(--ink-55);
-    font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .prob .detail { font-family:var(--mono); font-size:11.5px; color:var(--ink-55);
-    text-wrap:pretty; overflow-wrap:anywhere; }
-
-  /* ---- churn ---- */
-  .chart { padding:20px 26px 22px; display:flex; flex-direction:column; gap:14px; flex:1; }
-  .chart .plot { display:flex; gap:12px; align-items:flex-end; background:var(--sunk);
-    border-radius:24px; padding:14px 14px 10px; }
-  .chart .day { flex:1; display:flex; flex-direction:column; align-items:center; gap:8px;
-    min-width:0; }
-  .chart .pair { display:flex; gap:3px; align-items:flex-end; height:104px; width:100%;
-    justify-content:center; }
-  .chart .pair span { width:42%; border-radius:5px 5px 0 0; }
-  .chart .n-new { background:var(--accent); }
-  .chart .n-closed { background:var(--olive); }
-  .chart .lab { font-size:10px; color:var(--ink-45); font-variant-numeric:tabular-nums;
-    white-space:nowrap; }
-  .chart .hr { height:1px; background:var(--ink-12); margin-top:auto; }
-  .chart .foot { margin:0; font-size:11.5px; line-height:1.6; color:var(--ink-55);
-    text-wrap:pretty; }
-
-  /* ---- raw log ---- */
-  .log { padding:6px 26px 12px; }
-  .log .row { display:grid; grid-template-columns:64px minmax(0,1fr) auto 92px; gap:16px;
-    align-items:baseline; padding:9px 0; border-bottom:1px solid var(--ink-07);
-    font-family:var(--mono); font-size:11.5px; color:var(--ink-55); }
-  .log .row:last-child { border-bottom:0; }
-  .log .b { color:var(--ink); min-width:0; overflow:hidden; text-overflow:ellipsis;
-    white-space:nowrap; }
-  .log .st { letter-spacing:.08em; text-transform:uppercase; text-align:right;
-    white-space:nowrap; }
-  .log .st.complete { color:var(--ink-45); }
-  .log .st.incomplete, .log .st.failed { color:var(--ink); font-weight:600; }
-
-  summary { cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px;
-    padding:17px 26px; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
-    color:var(--ink-45); transition:color .2s; }
-  summary::-webkit-details-marker { display:none; }
-  summary::after { content:'+'; margin-left:auto; font-size:15px; line-height:1; }
-  details[open] summary::after { content:'\2013'; }
-  details[open] summary { border-bottom:1px solid var(--ink-12); }
-  summary:hover { color:var(--ink-70); }
-  .empty { padding:22px 26px; color:var(--ink-55); font-size:13px; }
-  code { font-family:var(--mono); font-size:11.5px; color:var(--ink-70);
-    background:var(--sunk); padding:1px 6px; border-radius:6px; }
-
-  footer { display:flex; gap:8px 20px; flex-wrap:wrap; align-items:baseline;
-    padding:2px 8px 0; font-size:11.5px; color:var(--ink-45); }
+  /* — footer — */
+  footer { display:flex; gap:var(--space-4) var(--space-6); flex-wrap:wrap;
+    align-items:baseline; padding:0 var(--space-1); font-size:12px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  footer .r { margin-left:auto; }
   footer .stamp { font-variant-numeric:tabular-nums; letter-spacing:.04em; }
-  footer .r { margin-left:auto; font-family:var(--mono); }
+  code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size:.92em; padding:1px 5px;
+    background:color-mix(in srgb, var(--color-text) 7%, transparent); }
+  #snapshot-note:empty { display:none; }
 
-  @media (max-width:820px) {
-    .page { padding:14px 12px 28px; }
-    .card { border-radius:22px; }
-    .top, .hero, .pulse { padding-left:20px; padding-right:20px; }
-    .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); padding:22px 20px 26px; }
-    .panel-h, .prob, .empty, .chart, .log, summary, .note.lead {
-      padding-left:20px; padding-right:20px; }
-    /* Four columns do not fit, and the one that gets squeezed to nothing is
-       the board token — which is the only part of a log row that says which
-       board it is about. The stats move under it instead. */
-    .log .row { grid-template-columns:64px minmax(0,1fr) auto; gap:4px 12px; }
-    .log .row > :first-child { grid-area:1 / 1; }
-    .log .b { grid-area:1 / 2; }
-    .log .s { grid-area:2 / 2; }
-    .log .st { grid-area:1 / 3; }
-    th:first-child, td:first-child { padding-left:20px; }
-    th:last-child, td:last-child { padding-right:20px; }
-    .hero .right { margin-left:0; }
+  /* — narrow — */
+  @media (max-width:900px) {
+    .tiles { grid-template-columns:repeat(3, minmax(0,1fr)); }
+    .tile:nth-child(3n+1) { border-left:0; }
+    .tile:nth-child(n+4) { border-top:1px solid var(--color-divider); }
+  }
+  @media (max-width:760px) {
+    .duo { grid-template-columns:minmax(0,1fr); }
+    .tiles { grid-template-columns:repeat(2, minmax(0,1fr)); }
+    .tile:nth-child(odd) { border-left:0; }
+    .tile:nth-child(n+3) { border-top:1px solid var(--color-divider); }
+    .hero .right { margin-left:0; text-align:left; }
   }
   @media (prefers-reduced-motion:reduce) {
-    * { transition-duration:.01ms !important; animation-duration:.01ms !important; }
+    * { animation-duration:.01ms !important; transition-duration:.01ms !important; }
   }
 </style>
 
+<header class="bar">
+  <nav class="nav">
+    <a class="nav-brand" href="./">REQ<em>TRACE</em></a>
+    <a href="./">Roles</a>
+    <a href="runs.html" aria-current="page">Coverage</a>
+    <div class="acts" style="display:flex;align-items:center;gap:var(--space-2);margin-left:var(--space-4)">
+      <a class="btn btn-secondary" href="https://github.com/sidharthjoly/ReqTrace">Method</a>
+    </div>
+  </nav>
+</header>
+
 <div class="page">
-  <div class="card">
-    <header class="top">
-      <a class="mark" href="./">Req<em>Trace</em></a>
+  <div class="card blueprint">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <div class="top">
       <span class="scope" id="subtitle">every sweep diffs each board in full</span>
       <span class="swept" id="modechip"><i></i><span id="mode">Live index</span></span>
-      <a class="back" href="index.html">Role index &rarr;</a>
-    </header>
+    </div>
 
     <section class="hero" id="hero"><div><div class="big">loading&hellip;</div></div></section>
 
@@ -262,7 +430,8 @@
 
   <div id="snapshot-note"></div>
 
-  <div class="card">
+  <div class="card blueprint">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
     <div class="panel-h">
       <span>Coverage by vendor</span>
       <span class="legend">
@@ -279,11 +448,13 @@
   </div>
 
   <div class="duo">
-    <div class="card">
+    <div class="card blueprint">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
       <div class="panel-h">Needs attention</div>
       <div class="probs" id="problems"></div>
     </div>
-    <div class="card">
+    <div class="card blueprint">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
       <div class="panel-h">
         <span>Churn by day</span>
         <span class="legend">
@@ -299,7 +470,8 @@
     </div>
   </div>
 
-  <details class="card" id="rawlog">
+  <details class="card blueprint" id="rawlog">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
     <summary>Raw run log &mdash; last 100 board fetches</summary>
     <div class="log" id="recent"></div>
   </details>
@@ -395,7 +567,7 @@ function tiles(s, idx) {
 function healthBar(r) {
   const seg = (cls, v, word) => v
     ? `<span class="s-${cls}" style="flex:${v}" title="${v} ${word}"></span>` : '';
-  return `<div class="bar" role="img" aria-label="${r.ok} complete, ${r.incomplete} incomplete, ${r.failed} failed of ${r.boards || 1}">${
+  return `<div class="hbar" role="img" aria-label="${r.ok} complete, ${r.incomplete} incomplete, ${r.failed} failed of ${r.boards || 1}">${
     seg('ok', r.ok, 'complete')}${seg('inc', r.incomplete, 'incomplete')}${seg('bad', r.failed, 'failed')}</div>`;
 }
 
@@ -410,7 +582,7 @@ function vendorTable(rows) {
       <td class="vendor">${esc(r.vendor)}</td>
       <td style="text-align:left">${healthBar(r)}</td>
       <td>${n(r.boards)}</td>
-      <td style="color:var(--ink-70)">${n(r.ok)}</td>
+      <td class="ok">${n(r.ok)}</td>
       <td>${num(r.incomplete)}</td>
       <td>${num(r.failed)}</td>
       <td class="q">${n(r.fetched)}</td>
@@ -566,8 +738,10 @@ source().then(([d, idx, asOf]) => {
   // chart so the panel exists to hang it on, and anchored to the raw log by id
   // rather than to "the first details on the page", which the layout owns.
   const det = document.createElement('details');
-  det.className = 'card';
-  det.innerHTML = '<summary>Churn table — board fetches and reopenings</summary>'
+  det.className = 'card blueprint';
+  det.innerHTML = '<i class="corner tl"></i><i class="corner tr"></i>'
+    + '<i class="corner bl"></i><i class="corner br"></i>'
+    + '<summary>Churn table — board fetches and reopenings</summary>'
     + '<div class="scroll"><table id="churn-table"></table></div>';
   $('#rawlog').before(det);
   churnTable(d.churn);

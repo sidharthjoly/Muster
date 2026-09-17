@@ -20,6 +20,8 @@
      rather than linked, because the export copies named page files into
      `site/` and a sibling stylesheet would neither be copied nor resolve from
      a file:// open. Only the subset this page uses is carried over. */
+  /* ==== SHARED WITH THE OTHER PAGE — START. Edit both, then run the
+     check in runs.html's header comment. ==== */
   :root {
     --color-bg:#f2f2f3;
     --color-surface:#e9e9ea;
@@ -124,6 +126,7 @@
   .nav a:hover, .nav a[aria-current='page'] { color:var(--color-accent); }
   header.bar { border-bottom:1px solid var(--color-divider);
     background:var(--color-bg); }
+  /* ==== SHARED WITH THE OTHER PAGE — END ==== */
 
   /* — the shell — */
   .wrap { max-width:1160px; width:100%; margin:0 auto;
