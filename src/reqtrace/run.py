@@ -23,6 +23,7 @@ from pathlib import Path
 import httpx
 
 from . import search as S
+from .companies import rows as company_rows
 from .adapters import ADAPTERS
 from .adapters.base import run_board
 from .models import BoardSnapshot, token_slug, utcnow
@@ -535,6 +536,16 @@ async def main() -> int:
             headers={"User-Agent": UA}, follow_redirects=True,
         ) as client:
             await sweep_all(client)
+
+    # Names, then the search index that reads them. Loading these only at
+    # server start was fine while the index was a local SQLite file someone
+    # served by hand; against a shared Postgres that nothing else writes to,
+    # it meant every board the crawler adopted showed its raw board_token on
+    # the published site until a human happened to run `reqtrace.web` against
+    # production. The rows are derived from CSVs in the checkout, so this is
+    # the same work whoever runs it.
+    print(f"company names: {store.load_companies(company_rows())} rows",
+          file=sys.stderr)
 
     # The UI searches jobs_fts, not jobs. Rebuilding it only at server start was
     # fine while every run was manual; once a scheduled sweep is landing jobs

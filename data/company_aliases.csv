@@ -1,0 +1,129 @@
+ats_vendor,board_token,company,why
+# Hand-checked display names for boards the token cannot yield. Highest
+# priority of all the name sources — see src/reqtrace/companies.py.
+#
+# "why" records how the name was established, because a board token is not
+# self-evidently anybody: "jobs" means the employer names itself in the text of
+# its own open roles, "crawl" means the crawler found the board linked from
+# that company's careers page (crawl_findings.seed_domain), and "known" means
+# the tenant is the company under a name the rules cannot spell.
+oracle,fa-evew-saasfaprod1.fa.ocs.oraclecloud.com/CX_1,Suncorp Group,crawl: suncorpgroup.com.au/careers
+oracle,fa-ewlx-saasfaprod1.fa.ocs.oraclecloud.com/CX_1,TPG Telecom,crawl: tpgtelecom.com.au (also vodafone.com.au, iinet.net.au)
+oracle,fa-ewlx-saasfaprod1.fa.ocs.oraclecloud.com/CX_2,TPG Telecom,crawl: tpgtelecom.com.au (also vodafone.com.au, iinet.net.au)
+oracle,ejjl.fa.ap1.oraclecloud.com/CX_1,AustralianSuper,crawl: australiansuper.com/careers
+oracle,edss.fa.ap1.oraclecloud.com/CX_1001,Pepper Money,crawl: peppermoney.com.au
+oracle,iaaktz.fa.ocs.oraclecloud.com/CX_1,1800RESPECT,crawl: 1800respect.org.au
+eightfold,app/elcompanies.com,The Estee Lauder Companies,crawl: careers.elcompanies.com
+eightfold,elcompanies/elcompanies.com,The Estee Lauder Companies,crawl: careers.elcompanies.com
+workday,salvationarmy.wd3/Volunteer,The Salvation Army,known
+workday,salvationarmy.wd3/Salvos,The Salvation Army,known
+workday,genpt.wd1/Careers,Genuine Parts Company,jobs: GPC Asia Pacific / Motion
+workday,mmc.wd1/MMC,Marsh McLennan,jobs: Oliver Wyman a Marsh business
+workday,mmc.wd1/careers,Marsh McLennan,jobs: Oliver Wyman a Marsh business
+workday,iqvia.wd1/iqvia,IQVIA,known
+workday,pwc.wd3/crm_experienced_careers_site,PwC,known
+workday,pwc.wd3/NonPublic_Postings,PwC,known
+workday,pwc.wd3/Global_Experienced_Careers,PwC,known
+workday,heidelbergmaterials.wd3/Global_HM_Career_Site,Heidelberg Materials,known
+workday,heidelbergmaterials.wd3/Hymix_Australia_Careers,Hymix Australia,known
+workday,integraldiagnostics.wd105/IDX_Careers,Integral Diagnostics,known
+workday,alsglobal.wd103/External,ALS,jobs: "At ALS, we encourage you to dream big"
+workday,7eleven.wd3/7eleven,7-Eleven,known
+workday,7eleven.wd3/7elevenv2,7-Eleven,known
+workday,surbanajurong.wd3/careersatsmec,SMEC,known: SMEC is Surbana Jurong's ANZ arm
+workday,cw.wd1/External,Cushman & Wakefield,jobs: facilities management across a property portfolio
+workday,hcmportal.wd5/Search,UPS,jobs: UPS hub roles and application boilerplate
+workday,healthcare.wd1/Search,Solventum,"jobs: ""Thank you for your interest in joining Solventum"""
+workday,ghr.wd1/lateral-apac,Bank of America,"jobs: ""At Bank of America, we are guided by a common purpose"""
+workday,wynd.wd5/External,Travel + Leisure Co.,jobs: Club Wyndham resorts
+workday,slihrms.wd3/Careers,AtkinsRealis,jobs: ADG a proud part of the AtkinsRealis group
+workday,cnx.wd1/external_global,Concentrix,jobs: Concentrix delivery roles
+workday,argonr.wd105/External,Argo Natural Resources,jobs: Bowen Basin coal operations
+workday,wk.wd3/external,Wolters Kluwer,known
+workday,globalhr.wd5/rec_rtx_ext_gateway,RTX,known: rec_rtx_ext_gateway
+workday,resmed.wd3/ResMed_External_Careers,ResMed,known: intercaps the splitter cannot keep
+workday,costar.wd1/CoStarCareers,CoStar Group,known: intercaps the splitter cannot keep
+workday,sevenwestmedia.wd105/SWM,Seven West Media,jobs: Seven West Media Perth roles
+workday,pacificsmiles.wd105/External_PSG,Pacific Smiles Group,known
+workday,paloaltonetworks.wd5/panwexternalcareers,Palo Alto Networks,known
+workday,citicclsa.wd3/External,CITIC CLSA,known
+workday,dentsuaegis.wd3/DAN_GLOBAL,dentsu,jobs: dentsu network
+workday,umusic.wd5/UMGAPAC,Universal Music Group,"jobs: ""We are UMG, the Universal Music Group"""
+workday,ing.wd3/ICSGBLCOR,ING,known
+workday,ing.wd3/jvsgblcor,ING,known
+workday,freseniusmedicalcare.wd3/fme,Fresenius Medical Care,known
+workday,airliquidehr.wd3/airliquideexternalcareer,Air Liquide,known
+workday,onelineage.wd1/External,Lineage,"jobs: ""Lineage is the world's largest temperature-controlled"""
+workday,vfc.wd5/vfc_careers,VF Corporation,known
+workday,vfc.wd5/northface_careers,The North Face,known
+workday,relx.wd3/relx,RELX,known
+workday,relx.wd3/LexisNexisLegal,LexisNexis,known
+workday,relx.wd3/ElsevierJobs,Elsevier,known
+workday,relx.wd3/RiskSolutions,LexisNexis Risk Solutions,known
+workday,fourseasons.wd3/search,Four Seasons,known
+workday,elderslimited.wd3/Elders_RE,Elders,known: RE is the real-estate arm
+workday,prosper.wd105/Pitcher-Partners-Melbourne,Pitcher Partners,jobs: Pitcher Partners
+workday,henryschein.wd1/External_Careers,Henry Schein,known
+workday,aussiebroadband.wd3/External,Aussie Broadband,known
+workday,motorolasolutions.wd5/Careers,Motorola Solutions,known
+workday,mrisoftware.wd501/External_CareerSite,MRI Software,known
+workday,globusmedical.wd5/GMED_Careers,Globus Medical,known
+workday,smithnephew.wd5/External,Smith+Nephew,known
+workday,avisbudget.wd1/abg_careers,Avis Budget Group,known
+workday,lindtspruengli.wd103/LindtSpruengliGroupCareers,Lindt & Spruengli,known
+workday,redhat.wd5/Jobs,Red Hat,known
+workday,tennis.wd3/ta_careers,Tennis Australia,known
+workday,gehc.wd5/GEHC_ExternalSite,GE HealthCare,known
+workday,bah.wd1/BAH_Jobs,Booz Allen Hamilton,known
+workday,ngc.wd1/Northrop_Grumman_External_Site,Northrop Grumman,known
+workday,pae.wd1/Amentum_Careers,Amentum,known
+workday,accenture.wd103/avanadecareers,Avanade,known: Accenture joint venture
+workday,cba.wd3/Bankwest_Careers,Bankwest,known: CBA subsidiary
+workday,kbr.wd5/kbr_careers,KBR,known
+workday,jci.wd5/JCI,Johnson Controls,known
+workday,jll.wd1/jllcareers,JLL,known
+workday,dxctechnology.wd1/DXCJobs,DXC Technology,known
+workday,cpalliance.wd3/CerebralPalsyAlliance,Cerebral Palsy Alliance,known
+workday,rba.wd105/RBA_Careers,Reserve Bank of Australia,known
+workday,rmit.wd3/RMIT_Jobs,RMIT University,known
+workday,rmit.wd3/RMIT_Careers,RMIT University,known
+workday,rmit.wd3/Job_On_Campus,RMIT University,known
+workday,usyd.wd105/USYD_EXTERNAL_CAREER_SITE,University of Sydney,known
+workday,unimelb.wd105/UoM_External_Career,University of Melbourne,known
+workday,uq.wd3/uqcareers,University of Queensland,known
+workday,mufgub.wd3/MUFG-Careers,MUFG,known
+workday,bpinternational.wd3/bpCareers,BP,known
+workday,gsknch.wd3/GSKCareers,Haleon,known: GSK consumer health demerger
+workday,slrconsulting.wd103/SLRCareers,SLR Consulting,known
+workday,epiqsystems.wd503/Epiq_Careers,Epiq,known
+workday,bdoau.wd105/BDOCareers,BDO Australia,known
+workday,bdoau.wd105/BDOEarlyCareers,BDO Australia,known
+workday,reagroup.wd3/reacareers,REA Group,known
+workday,cba.wd3/CommBank_Careers,CommBank,known
+workday,cba.wd3/Private_Ad,CommBank,known
+workday,cba.wd3/x15_Careers,x15ventures,known: CBA venture arm
+workday,jj.wd5/DisplacedEmployees,Johnson & Johnson,known
+workday,hp.wd5/EXTEU-AC-CareerSite,HP,known
+workday,hp.wd5/externalcareersite,HP,known
+workday,ntrs.wd1/northerntrust,Northern Trust,known
+workday,capgroup.wd1/capitalgroupcareers,Capital Group,known
+workday,sglottery.wd5/scientificgamesexternalcareers,Scientific Games,known
+workday,ncratleos.wd1/ext_non_usalteos,NCR Atleos,known
+workday,ncratleos.wd1/ext_apacatleos,NCR Atleos,known
+workday,mgpru.wd3/mandgprudential,M&G,known
+workday,abglobal.wd1/alliancebernsteincareers,AllianceBernstein,known
+workday,abglobal.wd1/privatealliancebernsteincareers,AllianceBernstein,known
+workday,mdtkangaroo.wd108/MiniMedCareers,Medtronic MiniMed,known
+workday,sggovterp.wd102/PublicServiceCareers,Singapore Public Service,known
+workday,nature.wd108/externalcareers,Springer Nature,known
+workday,db.wd3/DBWebsite,Deutsche Bank,known
+workday,gilead.wd1/kitepharmacareers,Kite Pharma,known
+workday,cgg.wd103/viridiencareers,Viridien,known
+workday,cgg.wd103/viridiengraduate,Viridien,known
+workday,spe.wd1/SonypicturesEntertainment,Sony Pictures Entertainment,known
+workday,wmeimg.wd1/WMEGRP,WME Group,known
+workday,modernatx.wd1/M_tx,Moderna,known
+workday,gsk.wd5/ViiV_Careers,ViiV Healthcare,known
+workday,ossur.wd3/CareersForMotion,Ossur,known: not Motion, which is a different company in this index
+workday,huhtamaki.wd103/DirectsExternal,Huhtamaki,known
+workday,ffive.wd5/f5jobs,F5,known
