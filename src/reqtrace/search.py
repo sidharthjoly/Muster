@@ -250,11 +250,20 @@ def facets(conn, qy: Query) -> dict:
         f"AND c.board_token = j.board_token {scope} GROUP BY 1 ORDER BY n DESC LIMIT 15",
         p).fetchall()]
 
+    # The page's salary control can hide most of the index, so the rail is given
+    # both halves of that ratio and says so rather than letting the reader find
+    # out by watching the list empty.
+    scope_n, salaried = conn.execute(
+        f"SELECT count(*), sum(CASE WHEN j.salary_min IS NOT NULL "
+        f"AND j.salary_min > 0 THEN 1 ELSE 0 END) FROM jobs j {scope}", p).fetchone()
+
     return {
         "cities": group("j.location_city", 30),
         "remote": group("j.remote_type", 6),
         "vendors": group("j.ats_vendor", 6),
         "companies": companies,
+        "scope": scope_n,
+        "salaried": salaried or 0,
     }
 
 
