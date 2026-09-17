@@ -191,7 +191,7 @@ jobs:
           # backlog is gaining on the five-day threshold or losing to it — so
           # print the margin, which moves every run, rather than the count,
           # which does not move until it is too late to be news.
-          age, cap = float(s["oldest_age_hours"]), s["stale_hours"]
+          age, cap = s["oldest_age_hours"], s["stale_hours"]
           margin = s["stale_margin_hours"]
           mark = ":white_check_mark:" if margin > 24 else (
                  ":warning:" if margin > 0 else ":x:")

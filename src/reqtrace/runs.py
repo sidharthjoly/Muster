@@ -147,9 +147,16 @@ def summary(conn, backend: str = "sqlite") -> dict:
         FROM latest WHERE rn = 1
     """, backend=backend)[0]
     row["stale_hours"] = STALE_HOURS
+    # Normalised here, once, because the two backends disagree about the type:
+    # Postgres computes the age with EXTRACT and hands back Decimal, SQLite
+    # does julianday arithmetic and hands back float. `health` is serialised
+    # with `default=str`, which would put a JSON string in /api/runs on Neon
+    # and a JSON number on SQLite — the kind of difference nothing notices
+    # until something downstream does arithmetic on it.
+    row["oldest_age_hours"] = float(row["oldest_age_hours"] or 0)
     # Hours of headroom before the stalest board trips STALE_HOURS. Negative
     # means at least one board already has — `stale` then says how many.
-    row["stale_margin_hours"] = STALE_HOURS - float(row["oldest_age_hours"] or 0)
+    row["stale_margin_hours"] = STALE_HOURS - row["oldest_age_hours"]
     # An index with no runs at all should read as empty, not as zeroes that
     # look like a sweep that found nothing.
     row["ever_run"] = bool(row["boards"])

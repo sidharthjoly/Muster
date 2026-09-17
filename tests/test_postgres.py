@@ -139,6 +139,11 @@ def test_every_health_query_runs(store):
     assert {v["vendor"] for v in h["vendors"]} == {"greenhouse"}
     assert len(h["problems"]) == 1 and h["problems"][0]["token"] == "beta"
     assert h["churn"] and h["recent"]
+    # EXTRACT returns Decimal here and float on SQLite. `health` serialises
+    # with `default=str`, so an un-normalised Decimal reaches /api/runs as a
+    # string on Neon and a number on SQLite.
+    assert isinstance(h["summary"]["oldest_age_hours"], float)
+    assert isinstance(h["summary"]["stale_margin_hours"], float)
 
 
 def test_the_two_backends_agree(store, tmp_path):
