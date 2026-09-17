@@ -94,6 +94,51 @@ def test_a_board_nobody_has_fetched_lately_is_stale(store):
     assert (s["ok"], s["stale"]) == (1, 1)
 
 
+def test_the_margin_moves_before_the_stale_count_does(store):
+    """`stale` is the alarm; this is the gauge. A sweep that is slowly losing
+    ground shows up here every run, and in `stale` only on the run it is
+    already too late."""
+    store.reconcile(snap([job("1")]))
+    fresh = runs.summary(store.conn)
+    assert fresh["oldest_age_hours"] == pytest.approx(0, abs=0.1)
+    assert fresh["stale_margin_hours"] == pytest.approx(runs.STALE_HOURS, abs=0.1)
+
+    backdate(store, runs.STALE_HOURS - 10)
+    losing = runs.summary(store.conn)
+    # Nothing is stale yet — and that is the point: the count still says 0.
+    assert losing["stale"] == 0
+    assert losing["oldest_age_hours"] == pytest.approx(runs.STALE_HOURS - 10, abs=0.1)
+    assert losing["stale_margin_hours"] == pytest.approx(10, abs=0.1)
+
+
+def test_the_margin_goes_negative_once_a_board_is_actually_stale(store):
+    store.reconcile(snap([job("1")]))
+    backdate(store, runs.STALE_HOURS + 5)
+    s = runs.summary(store.conn)
+    assert s["stale"] == 1
+    assert s["stale_margin_hours"] == pytest.approx(-5, abs=0.1)
+
+
+def test_the_margin_tracks_the_worst_board_not_the_last_one(store):
+    """One board swept a minute ago must not hide another nobody has touched
+    in days — the summary is read as "is the pipeline alive", and the answer
+    is about the board doing worst."""
+    store.reconcile(snap([job("1")]))
+    backdate(store, runs.STALE_HOURS - 6)
+    store.reconcile(snap([job("2")], token="beta"))
+    s = runs.summary(store.conn)
+    assert s["stale_margin_hours"] == pytest.approx(6, abs=0.1)
+
+
+def test_an_empty_log_has_a_full_margin_rather_than_a_crash(store):
+    """max() over no rows is NULL, and the summary is rendered unconditionally
+    in the workflow step — so this has to be a number."""
+    s = runs.summary(store.conn)
+    assert s["ever_run"] is False
+    assert s["oldest_age_hours"] == 0
+    assert s["stale_margin_hours"] == runs.STALE_HOURS
+
+
 def test_vendor_rollup_groups_by_adapter(store):
     store.reconcile(snap([job("1")]))
     store.reconcile(snap([job("2")], token="beta"))

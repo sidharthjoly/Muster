@@ -7,7 +7,10 @@ six weeks ago looks identical, from the search page, to a board that genuinely
 has no open roles.
 
 Queries take a connection rather than a `Store` so the web handler can keep its
-connection-per-request pattern. SQLite-only, like `search.py`.
+connection-per-request pattern, and run on either backend — `DIALECTS` carries
+the handful of expressions SQLite and Postgres spell differently. (`search.py`
+is still SQLite-only; this module stopped being so when the sweep moved to
+Neon and the step summary started reading its own run log back.)
 """
 
 from __future__ import annotations
@@ -129,6 +132,14 @@ def summary(conn, backend: str = "sqlite") -> dict:
                {n("error IS NOT NULL")} AS failed,
                {n(f"error IS NULL AND {d['not_done']}")} AS incomplete,
                {n(f"{d['age_h']} > {STALE_HOURS}")} AS stale,
+               -- How close the *worst* board is to the stale threshold.
+               -- `stale` is a count, so it reads 0 right up until it reads 1;
+               -- this is the same fact with the warning left in, and it is
+               -- what tells you a sweep that skips boards for time is losing
+               -- ground before any board actually goes stale. Computed here
+               -- rather than from `oldest_run` in Python because the two
+               -- backends hand that column back as a datetime and a string.
+               COALESCE(max({d['age_h']}), 0) AS oldest_age_hours,
                COALESCE(sum(n_new), 0) AS new,
                COALESCE(sum(n_closed), 0) AS closed,
                COALESCE(sum(n_reopened), 0) AS reopened,
@@ -136,6 +147,9 @@ def summary(conn, backend: str = "sqlite") -> dict:
         FROM latest WHERE rn = 1
     """, backend=backend)[0]
     row["stale_hours"] = STALE_HOURS
+    # Hours of headroom before the stalest board trips STALE_HOURS. Negative
+    # means at least one board already has — `stale` then says how many.
+    row["stale_margin_hours"] = STALE_HOURS - float(row["oldest_age_hours"] or 0)
     # An index with no runs at all should read as empty, not as zeroes that
     # look like a sweep that found nothing.
     row["ever_run"] = bool(row["boards"])
