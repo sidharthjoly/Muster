@@ -557,6 +557,17 @@ VALIDATABLE = ("greenhouse", "lever", "ashby", "smartrecruiters")
 #: out of this set, every such employer is fetched twice on every sweep.
 CASE_INSENSITIVE = frozenset({"greenhouse", "ashby", "smartrecruiters", "workday"})
 
+
+def board_key(vendor: str, token: str) -> tuple[str, str]:
+    """A board's identity, for deduplication and set membership.
+
+    Folds case only where the vendor resolves that way. Every reader that
+    compares two tokens has to fold identically or they disagree on precisely
+    the boards the distinction above was added for — a Lever board lost to
+    over-folding, a Workday board fetched twice by under-folding.
+    """
+    return (vendor, token.lower() if vendor in CASE_INSENSITIVE else token)
+
 #: Vendors with an adapter, so a found token is directly ingestable.
 INGESTABLE = {f.vendor for f in FINGERPRINTS if f.ingestable}
 

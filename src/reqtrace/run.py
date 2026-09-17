@@ -103,14 +103,22 @@ FLUSH_EVERY = 20
 
 # Which vendors resolve tokens case-insensitively is one fact with several
 # readers (this, `discover_boards.py report`, `crawl_forever.py adopt`), and it
-# went stale here the moment Workday arrived — see `crawl.CASE_INSENSITIVE`.
-from .crawl import CASE_INSENSITIVE  # noqa: E402
+# went stale here the moment Workday arrived. `crawl.board_key` is that fact as
+# a function rather than a set each reader folds by hand — two of the three now
+# call it; `discover_boards.py report` still rolls its own.
+from .crawl import board_key  # noqa: E402
+from .retired import retired  # noqa: E402
 
 
 def configured_boards(vendor: str) -> list[str]:
     """Boards to ingest: the hand-curated Step 0 audit, the global-employer
-    audit, plus anything discovery has since validated. Curated entries win on
-    ordering so a hand-checked board is always fetched first."""
+    audit, plus anything discovery has since validated, less anything
+    `retired_boards.csv` has written off. Curated entries win on ordering so a
+    hand-checked board is always fetched first.
+
+    Retirement is filtered here rather than by editing the source CSVs because
+    those files are append-only by design — `retired.py` has the argument.
+    """
     tokens: list[str] = []
     for path, col in ((AUDIT, "board_token"), (GLOBAL, "board_token"),
                       (DISCOVERED, "board_token")):
@@ -119,12 +127,14 @@ def configured_boards(vendor: str) -> list[str]:
         for r in csv.DictReader(path.open()):
             if r.get("ats_vendor") == vendor and r.get(col):
                 tokens.append(r[col])
+    gone = retired()
     seen, out = set(), []
     for t in tokens:
-        key = t.lower() if vendor in CASE_INSENSITIVE else t
-        if key not in seen:
-            seen.add(key)
-            out.append(t)
+        key = board_key(vendor, t)
+        if key in gone or key in seen:
+            continue
+        seen.add(key)
+        out.append(t)
     return out
 
 

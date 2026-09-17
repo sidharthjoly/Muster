@@ -58,9 +58,10 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from reqtrace.crawl import (  # noqa: E402
-    CASE_INSENSITIVE, UA, Crawler, canonicalise, host_of, registrable,
+    UA, Crawler, board_key, canonicalise, host_of, registrable,
 )
 from reqtrace.frontier import Frontier  # noqa: E402
+from reqtrace.retired import retired  # noqa: E402
 from reqtrace.store import Store  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -375,11 +376,17 @@ def adopt(f: Frontier, dry_run: bool = False) -> int:
         print("nothing new to adopt", file=sys.stderr)
         return 0
 
-    def key(vendor: str, token: str) -> tuple[str, str]:
-        """Lever tokens are case-sensitive — `jobs.lever.co/Zeller` resolves and
-        `/zeller` 404s — so folding every vendor to lowercase here, as this did,
-        would treat two distinct Lever boards as one and drop the second."""
-        return (vendor, token.lower() if vendor in CASE_INSENSITIVE else token)
+    # `board_key` folds case only where the vendor does: Lever tokens are
+    # case-sensitive — `jobs.lever.co/Zeller` resolves and `/zeller` 404s — so
+    # folding every vendor to lowercase here, as this once did in a local
+    # helper, would treat two distinct Lever boards as one and drop the second.
+    #
+    # Findings are re-offered every lap (`pending_adoption` filters against the
+    # CSV, not `adopted_at`), so a board that has been retired would be
+    # re-adopted on the next crawl if this did not hold it out. Retirement is
+    # only ever granted to a token that 404'd on first contact and stored
+    # nothing — see `reqtrace/retired.py`.
+    gone = retired()
 
     existing: dict[tuple[str, str], dict] = {}
     fields = ["ats_vendor", "board_token", "board_name", "n_jobs", "n_au",
@@ -388,11 +395,15 @@ def adopt(f: Frontier, dry_run: bool = False) -> int:
         reader = csv.DictReader(DISCOVERED.open())
         fields = reader.fieldnames or fields
         for r in reader:
-            existing[key(r["ats_vendor"], r["board_token"])] = r
+            existing[board_key(r["ats_vendor"], r["board_token"])] = r
 
     added = []
+    skipped_retired = 0
     for r in rows:
-        k = key(r["ats_vendor"], r["board_token"])
+        k = board_key(r["ats_vendor"], r["board_token"])
+        if k in gone:
+            skipped_retired += 1
+            continue
         if k in existing:
             continue
         row = {k: "" for k in fields}
@@ -404,6 +415,13 @@ def adopt(f: Frontier, dry_run: bool = False) -> int:
         })
         existing[k] = row
         added.append(r)
+
+    # Said out loud rather than swallowed: a retired board being re-offered
+    # every lap is the system working, but it should be visible that adoption
+    # is declining something on purpose, not that the crawl found nothing.
+    if skipped_retired:
+        print(f"holding back {skipped_retired} retired board(s) — see "
+              f"data/retired_boards.csv", file=sys.stderr)
 
     if not added:
         if not dry_run:

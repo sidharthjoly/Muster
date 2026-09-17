@@ -1,0 +1,2 @@
+ats_vendor,board_token,reason,retired_at
+greenhouse,cesium,"404 on first contact (boards-api 404s, no such Greenhouse board); 0 jobs ever stored, so nothing is orphaned by dropping it. Adopted by the crawler from a token on cesium.com/careers.",2026-09-17
