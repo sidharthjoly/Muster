@@ -98,7 +98,7 @@ SKILLS: dict[str, tuple[str, ...]] = {
     "nlp": ("nlp", "natural language processing", "text mining"),
     "computer-vision": ("computer vision", "image recognition", "opencv"),
     "llm": ("llm", "llms", "large language model", "large language models",
-            "generative ai", "genai", "rag", "prompt engineering"),
+            "generative ai", "genai", "prompt engineering"),
     "mlops": ("mlops", "mlflow", "model deployment", "model monitoring",
               "feature store"),
     "experimentation": ("a/b testing", "ab testing", "experimentation",
@@ -124,6 +124,20 @@ SKILLS: dict[str, tuple[str, ...]] = {
     "api": ("rest api", "restful", "api development", "graphql", "microservice",
             "microservices"),
     "agile": ("agile", "scrum", "kanban", "jira"),
+    # Appended, and appended for a reason. `rag` was a surface form of `llm`
+    # until 2026-09-18, which meant a résumé and an ad that both named the one
+    # technique they had in common scored it at `llm`'s weight — 272 ads carry
+    # that flag, so it is the generic half of the vocabulary and worth an idf of
+    # 3.51. On its own the term is in 73 ads and worth 4.82, which is the rarity
+    # the matcher exists to reward and could not see while the two were one slug.
+    #
+    # The cost is 9 ads that say RAG and never say LLM or GenAI: they keep a
+    # `rag` flag and lose their `llm` one, so a résumé naming only LLMs no longer
+    # reaches them. Listing "rag" under both slugs would avoid that and score a
+    # shared mention twice; one concept per slug is the rule the rest of this
+    # file follows, and 0.25% of the index is the price of keeping it.
+    "rag": ("rag", "retrieval augmented", "retrieval-augmented",
+            "retrieval augmented generation"),
 }
 
 VOCAB: tuple[str, ...] = tuple(SKILLS)
