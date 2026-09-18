@@ -28,22 +28,22 @@ if [ ! -x "$UV" ]; then
     exit 127
 fi
 
-# REQTRACE_ARGS is appended, so it can narrow the sweep for a smoke test
-# (`REQTRACE_ARGS="--vendor lever --max-boards 1"`) without the plist and the
+# MUSTER_ARGS is appended, so it can narrow the sweep for a smoke test
+# (`MUSTER_ARGS="--vendor lever --max-boards 1"`) without the plist and the
 # scheduled command diverging. Unset in normal operation.
 echo "=== $(date -u +%Y-%m-%dT%H:%M:%SZ) sweep starting ===" >> "$LOG"
 cd "$ROOT" || exit 1
-# shellcheck disable=SC2086 - word splitting is the point for REQTRACE_ARGS
-"$UV" run --project "$ROOT" python -m reqtrace.run --vendor all \
-    ${REQTRACE_ARGS:-} >> "$LOG" 2>&1
+# shellcheck disable=SC2086 - word splitting is the point for MUSTER_ARGS
+"$UV" run --project "$ROOT" python -m muster.run --vendor all \
+    ${MUSTER_ARGS:-} >> "$LOG" 2>&1
 status=$?
 
 # Refresh the static export so site/ always matches the last sweep. Cheap, and
 # it keeps a locally-served snapshot honest. Publishing is deliberately NOT
 # automatic: it pushes to a remote, and a daily unattended push is a bigger
-# commitment than a daily fetch. Set REQTRACE_PUBLISH=1 in the plist to opt in.
+# commitment than a daily fetch. Set MUSTER_PUBLISH=1 in the plist to opt in.
 if [ $status -eq 0 ]; then
-    if [ "${REQTRACE_PUBLISH:-0}" = "1" ]; then
+    if [ "${MUSTER_PUBLISH:-0}" = "1" ]; then
         "$UV" run --project "$ROOT" python scripts/export_static.py --publish --allow-dirty \
             >> "$LOG" 2>&1 || echo "export/publish failed" >> "$LOG"
     else

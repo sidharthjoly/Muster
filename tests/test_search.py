@@ -6,9 +6,9 @@ from datetime import date
 
 import pytest
 
-from reqtrace import search as S
-from reqtrace.models import BoardSnapshot, Job
-from reqtrace.store import Store
+from muster import search as S
+from muster.models import BoardSnapshot, Job
+from muster.store import Store
 
 
 def j(ext, title, city="Sydney", country="AU", **kw):
@@ -92,7 +92,7 @@ def test_symbol_only_query_matches_nothing_rather_than_everything(conn):
 
 def test_queries_with_punctuation_still_search(conn):
     """'C++' and 'R&D' should search, not be discarded."""
-    from reqtrace.search import _fts_expression
+    from muster.search import _fts_expression
     for q in ("C++", "R&D", "ML/AI"):
         assert _fts_expression(q) != "", q
     assert S.search(conn, S.Query(q="data")).total > 0
@@ -102,7 +102,7 @@ def test_short_terms_are_not_prefix_matched(conn):
     """'C++' tokenises to 'c'; prefix-matching that would match nearly every
     document, so the user would get the whole index back and believe it all
     matched."""
-    from reqtrace.search import _fts_expression
+    from muster.search import _fts_expression
     assert _fts_expression("C++") == '"C++"'          # no trailing *
     assert _fts_expression("data") == '"data"*'       # long enough to prefix
     everything = S.search(conn, S.Query()).total
@@ -112,7 +112,7 @@ def test_short_terms_are_not_prefix_matched(conn):
 def test_finance_operations_analysts_are_excluded(conn):
     """A bank board is full of 'Loan Doc & Proc Analyst' and 'Collections
     Analyst'. They match 'analyst' but are not data roles."""
-    from reqtrace.search import _filters
+    from muster.search import _filters
 
     where, params = _filters(S.Query(data_only=True))
     clause = " ".join(where)

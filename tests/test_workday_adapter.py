@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from reqtrace.adapters.base import BoardIncomplete
-from reqtrace.adapters.workday import (
+from muster.adapters.base import BoardIncomplete
+from muster.adapters.workday import (
     WorkdayAdapter, base_url, external_id, parse_token,
 )
 
@@ -53,7 +53,7 @@ def test_completeness_reconciles_against_total():
 def test_external_id_prefers_the_requisition_id():
     """externalPath contains the title slug and changes when a title is edited;
     the requisition id in bulletFields does not, and identity must be stable."""
-    from reqtrace.adapters.workday import WdPosting
+    from muster.adapters.workday import WdPosting
 
     p = WdPosting(title="X", externalPath="/job/Sydney/Some-Title_REQ1",
                   bulletFields=["REQ1"])

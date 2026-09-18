@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Export the index as a static site — the same two pages, no Python behind them.
 
-The pages in `src/reqtrace/static/` already run in two modes: served by
-`reqtrace.web` they call `/api/*`, and served as plain files they look for
+The pages in `src/muster/static/` already run in two modes: served by
+`muster.web` they call `/api/*`, and served as plain files they look for
 `data/manifest.json` and filter in the browser instead. This writes the second
 half of that, so nothing here is a fork of the live UI — it is the same files
 plus JSON.
@@ -50,18 +50,18 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from reqtrace import runs, search, skills  # noqa: E402
-from reqtrace.store import DEFAULT_SQLITE  # noqa: E402
+from muster import runs, search, skills  # noqa: E402
+from muster.store import DEFAULT_SQLITE  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-STATIC = ROOT / "src" / "reqtrace" / "static"
+STATIC = ROOT / "src" / "muster" / "static"
 SITE = ROOT / "site"
 PAGES = ("index.html", "runs.html")
 # The custom domain has to be rebuilt into `site/` on every export: `publish`
 # force-pushes an orphan commit built only from this directory, so a CNAME
 # file that GitHub writes to the gh-pages branch survives exactly until the
 # next publish and then the domain silently stops resolving.
-CNAME = "reqtrace.sidharthjoly.com"
+CNAME = "muster.sidharthjoly.com"
 
 JOBS_SQL = """
 SELECT j.ats_vendor, j.board_token, j.external_id, j.title,
@@ -214,10 +214,30 @@ def build(db: Path) -> dict:
         "unrankable": sum(1 for j in jobs if not j.get("sk") and not j.get("kw")),
         "pulse": pulse,
     }
-    write = lambda name, obj: (SITE / "data" / name).write_text(  # noqa: E731
-        json.dumps(obj, separators=(",", ":"), default=_iso))
+    # The data slice, written as its own file. The page never reads it — it
+    # holds the whole AU file and filters in the tab — but it is what the index
+    # is *about*, and at 170KB gzipped against 2.2MB it is the difference
+    # between an API a script can poll and a download it has to budget for.
+    data_jobs = [j for j in jobs if search.is_data_role(j.get("title"))]
+
+    def write(name: str, obj) -> None:
+        body = json.dumps(obj, separators=(",", ":"), default=_iso)
+        # Two paths, same bytes. `data/` is what the pages fetch and has never
+        # been promised to anyone; `data/v1/` is the documented one, and the
+        # version is in it because `_slim` drops columns and this file is
+        # expected to keep shrinking that way (see its docstring). Without the
+        # prefix the next column drop is a silent breaking change for every
+        # reader that is not this repo.
+        for d in (SITE / "data", SITE / "data" / "v1"):
+            (d / name).write_text(body)
+
+    # Shipped so a reader can size the slice before deciding to fetch it.
+    manifest["jobs_data"] = len(data_jobs)
+
+    (SITE / "data" / "v1").mkdir(parents=True, exist_ok=True)
     write("manifest.json", manifest)
     write("jobs.json", jobs)
+    write("jobs-data.json", data_jobs)
     write("health.json", health)
 
     return manifest
@@ -250,7 +270,7 @@ def publish(branch: str = "gh-pages", allow_dirty: bool = False) -> int:
     # Outside the repo entirely: git refuses some operations on a worktree
     # nested under .git/, and a stray one inside the tree would get picked up
     # by the next `git add -A`.
-    tmp = Path(tempfile.mkdtemp(prefix="reqtrace-pages-"))
+    tmp = Path(tempfile.mkdtemp(prefix="muster-pages-"))
     tmp.rmdir()  # `worktree add` wants to create it
     r = subprocess.run(["git", "worktree", "add", "--detach", str(tmp)],
                        cwd=ROOT, capture_output=True, text=True)
@@ -274,7 +294,7 @@ def publish(branch: str = "gh-pages", allow_dirty: bool = False) -> int:
         stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         subprocess.run(["git", "commit", "-q", "-m", f"Export {stamp}"],
                        cwd=tmp, check=True)
-        # GIT_TERMINAL_PROMPT=0 so an unattended run (REQTRACE_PUBLISH=1 from
+        # GIT_TERMINAL_PROMPT=0 so an unattended run (MUSTER_PUBLISH=1 from
         # the launchd agent) fails with an error instead of blocking forever on
         # a credential prompt nobody is there to answer.
         subprocess.run(["git", "push", "-f", "origin", f"HEAD:{branch}"],

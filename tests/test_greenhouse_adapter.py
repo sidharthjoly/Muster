@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from reqtrace.adapters.greenhouse import GhBoard, map_job
+from muster.adapters.greenhouse import GhBoard, map_job
 
 SAMPLES = Path(__file__).resolve().parent.parent / "fixtures" / "samples" / "greenhouse"
 
@@ -70,7 +70,7 @@ import asyncio  # noqa: E402
 
 import httpx  # noqa: E402
 
-from reqtrace.adapters.greenhouse import GreenhouseAdapter  # noqa: E402
+from muster.adapters.greenhouse import GreenhouseAdapter  # noqa: E402
 
 
 def _fetch_with(payload):

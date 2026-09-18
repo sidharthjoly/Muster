@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from reqtrace.adapters.base import BoardIncomplete
-from reqtrace.adapters.smartrecruiters import SmartRecruitersAdapter
+from muster.adapters.base import BoardIncomplete
+from muster.adapters.smartrecruiters import SmartRecruitersAdapter
 
 SAMPLES = (Path(__file__).resolve().parent.parent / "fixtures" / "samples"
            / "smartrecruiters")

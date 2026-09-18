@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from reqtrace.adapters.ashby import AshbyAdapter
-from reqtrace.adapters.base import BoardIncomplete
+from muster.adapters.ashby import AshbyAdapter
+from muster.adapters.base import BoardIncomplete
 
 SAMPLES = Path(__file__).resolve().parent.parent / "fixtures" / "samples" / "ashby"
 

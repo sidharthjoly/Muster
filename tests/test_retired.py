@@ -16,8 +16,8 @@ worked for a day.
 import csv
 from pathlib import Path
 
-from reqtrace import retired as R
-from reqtrace import run as RUN
+from muster import retired as R
+from muster import run as RUN
 
 
 def write_retired(tmp_path, rows) -> Path:

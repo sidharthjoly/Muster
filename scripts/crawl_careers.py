@@ -35,7 +35,7 @@ from pathlib import Path
 import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from reqtrace.crawl import (  # noqa: E402
+from muster.crawl import (  # noqa: E402
     UA, VALIDATABLE, Crawler, Finding,
 )
 

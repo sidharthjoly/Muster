@@ -51,7 +51,7 @@ from typing import Callable, Iterable
 
 import httpx
 
-UA = "reqtrace/0.1 (+personal job-search index; contact via repo)"
+UA = "muster/0.1 (+personal job-search index; contact via repo)"
 
 MAX_BYTES = 2_000_000        # a careers page that needs more than this isn't one
 MIN_HOST_DELAY = 1.5         # seconds between requests to the same host

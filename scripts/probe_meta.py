@@ -26,7 +26,7 @@ import httpx
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "meta_sitemap_probe.json"
 SITEMAP = "https://www.metacareers.com/jobsearch/sitemap.xml"
-UA = "reqtrace/0.1 (+personal job-search index)"
+UA = "muster/0.1 (+personal job-search index)"
 CONCURRENCY = 3          # deliberately gentle
 LD = re.compile(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', re.S)
 

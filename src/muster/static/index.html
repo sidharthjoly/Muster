@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ReqTrace — data roles in Australia</title>
+<title>Muster — data roles in Australia</title>
 <meta name="description" content="Open data, analytics and machine learning roles in Australia, taken straight from employers' own hiring systems.">
 <!-- Barlow is the Industry system's face. It is loaded as an enhancement, not a
      dependency: this page also ships as a static export that has to work as a
@@ -460,7 +460,7 @@
       <a href="./" aria-current="page">Roles</a>
       <a href="runs.html">Coverage</a>
       <div class="acts" style="display:flex;align-items:center;gap:var(--space-2);margin-left:var(--space-4)">
-        <a class="btn btn-secondary" href="https://github.com/sidharthjoly/ReqTrace">Method</a>
+        <a class="btn btn-secondary" href="https://github.com/sidharthjoly/Muster">Method</a>
       </div>
     </nav>
   </header>
@@ -624,7 +624,7 @@
 
   <footer>
     <div class="in">
-      <span class="brand">REQTRACE</span>
+      <span class="brand">MUSTER</span>
       <span>Read from employers&rsquo; own hiring systems. Apply links go to the employer.</span>
       <span class="r" id="scopeout"></span>
     </div>
@@ -634,7 +634,7 @@
 <script>
 const $ = s => document.querySelector(s);
 
-// One page, two backends. Served by `reqtrace.web` it queries /api/search
+// One page, two backends. Served by `muster.web` it queries /api/search
 // against FTS5; served as a static export (or opened as a file) it loads the
 // whole AU set once and filters in the browser. 3.4k rows is small enough that
 // a search library would be ceremony — and it is why the export is AU-only:
@@ -940,7 +940,7 @@ function localFacets() {
    What is scored is the `sk` column: a closed skill vocabulary matched against
    each ad's full description at export time. `kw` cannot do this job — it drops
    any term more than 4% of the corpus carries, which is exactly where `python`
-   and `aws` live. See `reqtrace/skills.py`. */
+   and `aws` live. See `muster/skills.py`. */
 
 const CV = { on:false, skills:new Set(), roles:[], level:null, hasText:false };
 let SKILLMATCH = null;   // compiled vocabulary, built once from the manifest

@@ -22,9 +22,9 @@ from pathlib import Path
 
 import pytest
 
-from reqtrace import skills
+from muster import skills
 
-PAGE = Path(__file__).resolve().parent.parent / "src" / "reqtrace" / "static" / "index.html"
+PAGE = Path(__file__).resolve().parent.parent / "src" / "muster" / "static" / "index.html"
 
 CASES = [
     "Strong Python and SQL, with AWS and some Airflow.",

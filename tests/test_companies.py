@@ -7,7 +7,7 @@ and these pin the shapes that dump showed were easy to get wrong.
 
 import csv
 
-from reqtrace.companies import AUDIT, ALIASES, DISCOVERED, GLOBAL, derive, rows
+from muster.companies import AUDIT, ALIASES, DISCOVERED, GLOBAL, derive, rows
 
 
 def test_workday_tenant_carries_the_name():

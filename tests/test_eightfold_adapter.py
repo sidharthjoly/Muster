@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from reqtrace.adapters.base import BoardIncomplete
-from reqtrace.adapters.eightfold import EightfoldAdapter, parse_token
+from muster.adapters.base import BoardIncomplete
+from muster.adapters.eightfold import EightfoldAdapter, parse_token
 
 SAMPLES = Path(__file__).resolve().parent.parent / "fixtures" / "samples" / "eightfold"
 TOKEN = "citi/citi.com"

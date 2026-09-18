@@ -8,8 +8,8 @@ indistinguishable from mass closures.
 
 import pytest
 
-from reqtrace.models import BoardSnapshot, Job
-from reqtrace.store import Store
+from muster.models import BoardSnapshot, Job
+from muster.store import Store
 
 
 def job(ext_id, title="Data Scientist", h="h1"):
@@ -245,7 +245,7 @@ def test_schema_migration_preserves_an_existing_database(tmp_path):
 def test_token_slug_is_filesystem_safe():
     """Workday and Oracle board tokens carry a site path, so the raw token
     cannot be a filename — fixture replay broke on exactly this."""
-    from reqtrace.models import token_slug
+    from muster.models import token_slug
 
     assert token_slug("cba.wd3/CommBank_Careers") == "cba.wd3_CommBank_Careers"
     assert token_slug("ebuu.fa.ap1.oraclecloud.com/CX_1") == "ebuu.fa.ap1.oraclecloud.com_CX_1"

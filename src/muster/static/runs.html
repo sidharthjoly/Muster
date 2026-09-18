@@ -1,8 +1,8 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ReqTrace · ingest health</title>
-<meta name="description" content="Which employer boards ReqTrace has fetched, how completely, and how recently.">
+<title>Muster · ingest health</title>
+<meta name="description" content="Which employer boards Muster has fetched, how completely, and how recently.">
 <!-- Barlow is the Industry system's face. It is loaded as an enhancement, not
      a dependency: this page ships as part of a static export that has to work
      from disk with no network, so every font token falls back to the platform
@@ -29,7 +29,7 @@
      is silent when they match (the pattern is anchored to the start of the
      line so it matches the markers, not this sentence):
 
-         cd src/reqtrace/static
+         cd src/muster/static
          diff <(sed -n '/^  \/\* ==== SHARED/,/END ====/p' index.html) \
               <(sed -n '/^  \/\* ==== SHARED/,/END ====/p' runs.html)
 
@@ -404,7 +404,7 @@
     <a href="./">Roles</a>
     <a href="runs.html" aria-current="page">Coverage</a>
     <div class="acts" style="display:flex;align-items:center;gap:var(--space-2);margin-left:var(--space-4)">
-      <a class="btn btn-secondary" href="https://github.com/sidharthjoly/ReqTrace">Method</a>
+      <a class="btn btn-secondary" href="https://github.com/sidharthjoly/Muster">Method</a>
     </div>
   </nav>
 </header>
@@ -526,7 +526,7 @@ const LABEL = { ok: 'Healthy', degraded: 'Degraded', bad: 'Stalled' };
 function hero(s) {
   if (!s.ever_run) {
     $('#hero').innerHTML = `<div><div class="big">No sweeps yet</div>
-      <div class="when">Run <code>uv run python -m reqtrace.run --vendor all</code>,
+      <div class="when">Run <code>uv run python -m muster.run --vendor all</code>,
       or install the schedule with <code>python scripts/install_autorun.py</code>.</div></div>`;
     return;
   }
@@ -683,7 +683,7 @@ function sweep(d) {
   $('#sweep').hidden = false;
 }
 
-// Same page against either backend: reqtrace.web's /api/runs, or the JSON the
+// Same page against either backend: muster.web's /api/runs, or the JSON the
 // static export drops next to it. The run log is 24KB, so the export carries
 // it whole rather than summarising — a health page that hides the raw rows is
 // asking to be trusted rather than checked.

@@ -37,7 +37,7 @@ unbounded in employers and strictly bounded per employer — the same rule
 `crawl.py` has always had, now persisted so a restart cannot forget it.
 
 What it produces is rows in `crawl_findings`. `adopt` turns the ingestable ones
-into `data/discovered_boards.csv` entries, which is what `reqtrace.run` reads —
+into `data/discovered_boards.csv` entries, which is what `muster.run` reads —
 and that file stays in git deliberately, because it is the record that protects
 closure detection, and a record with no version history is one bad sweep away
 from silently un-adopting boards whose jobs would then sit open forever.
@@ -57,12 +57,12 @@ from pathlib import Path
 import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from reqtrace.crawl import (  # noqa: E402
+from muster.crawl import (  # noqa: E402
     UA, Crawler, board_key, canonicalise, host_of, registrable,
 )
-from reqtrace.frontier import Frontier  # noqa: E402
-from reqtrace.retired import retired  # noqa: E402
-from reqtrace.store import Store  # noqa: E402
+from muster.frontier import Frontier  # noqa: E402
+from muster.retired import retired  # noqa: E402
+from muster.store import Store  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DISC = ROOT / "data" / "discovery"
@@ -385,7 +385,7 @@ def adopt(f: Frontier, dry_run: bool = False) -> int:
     # CSV, not `adopted_at`), so a board that has been retired would be
     # re-adopted on the next crawl if this did not hold it out. Retirement is
     # only ever granted to a token that 404'd on first contact and stored
-    # nothing — see `reqtrace/retired.py`.
+    # nothing — see `muster/retired.py`.
     gone = retired()
 
     existing: dict[tuple[str, str], dict] = {}
@@ -461,7 +461,7 @@ def adopt(f: Frontier, dry_run: bool = False) -> int:
     f.mark_adopted([(r["ats_vendor"], r["board_token"], r["seed_domain"])
                     for r in rows])
     print(f"{len(out)} boards -> {DISCOVERED}", file=sys.stderr)
-    print("next sweep picks them up: uv run python -m reqtrace.run --vendor all",
+    print("next sweep picks them up: uv run python -m muster.run --vendor all",
           file=sys.stderr)
     return 0
 

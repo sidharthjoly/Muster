@@ -1,5 +1,5 @@
 [project]
-name = "reqtrace"
+name = "muster"
 version = "0.1.0"
 description = "A search index over Australian data roles, pulled straight from employers' ATS feeds"
 readme = "README.md"
@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-reqtrace = "reqtrace:main"
+muster = "muster:main"
 
 [build-system]
 requires = ["uv_build>=0.12.1,<0.13.0"]
@@ -28,7 +28,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-# `scripts/` is not part of the installed package — `reqtrace` builds from
+# `scripts/` is not part of the installed package — `muster` builds from
 # `src/` — so nothing puts the repo root on sys.path, and pytest's own
 # prepend-import only adds `tests/`. Without this, the one test that reaches
 # into `scripts.crawl_forever` fails to collect while every other test passes,

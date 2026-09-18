@@ -13,7 +13,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from reqtrace.crawl import (
+from muster.crawl import (
     STRONG, Crawler, canonicalise, extract_links, find_boards, plausible_token,
     registrable, same_site, score_link, sitemap_urls,
 )

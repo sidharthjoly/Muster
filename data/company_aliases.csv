@@ -1,6 +1,6 @@
 ats_vendor,board_token,company,why
 # Hand-checked display names for boards the token cannot yield. Highest
-# priority of all the name sources — see src/reqtrace/companies.py.
+# priority of all the name sources — see src/muster/companies.py.
 #
 # "why" records how the name was established, because a board token is not
 # self-evidently anybody: "jobs" means the employer names itself in the text of

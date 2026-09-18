@@ -62,15 +62,15 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from reqtrace.normalise import is_australian, parse_location  # noqa: E402
-from reqtrace.search import ANALYST_EXCLUDE, DATA_TERMS       # noqa: E402
+from muster.normalise import is_australian, parse_location  # noqa: E402
+from muster.search import ANALYST_EXCLUDE, DATA_TERMS       # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "nab_sitemap_probe.json"
 SITEMAP = "https://careers.nab.com.au/sitemap.xml"
 SEARCH = "https://careers.nab.com.au/jobs/search?page={n}"
 SEARCH_PAGES = 3          # what the site's own pagination advertises
-UA = "reqtrace/0.1 (+personal job-search index)"
+UA = "muster/0.1 (+personal job-search index)"
 CRAWL_DELAY = 5.0         # robots.txt: Crawl-delay: 5 — see --delay
 BACKOFF = 300.0           # what the WAF actually needs before it serves again
 GIVE_UP_AFTER = 8         # consecutive challenges — stop, don't hammer a bank

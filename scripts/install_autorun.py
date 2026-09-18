@@ -36,8 +36,8 @@ LOGS = ROOT / "data" / "logs"
 # because its tier schedule fetches only what is due. The crawler is a daemon:
 # its frontier is a queue that grows as it drains, so it should be up whenever
 # the machine is, and launchd should put it back if it dies.
-LABEL = "com.reqtrace.ingest"
-CRAWL_LABEL = "com.reqtrace.crawl"
+LABEL = "com.muster.ingest"
+CRAWL_LABEL = "com.muster.crawl"
 AGENTS = Path.home() / "Library" / "LaunchAgents"
 PLIST = AGENTS / f"{LABEL}.plist"
 CRAWL_PLIST = AGENTS / f"{CRAWL_LABEL}.plist"
@@ -77,7 +77,7 @@ def build_plist(uv: Path, hour: int, minute: int, publish: bool = False) -> dict
             # With this set the sweep also force-pushes the static export to
             # gh-pages, so the published site tracks the index instead of
             # freezing at whenever someone last ran it by hand.
-            **({"REQTRACE_PUBLISH": "1"} if publish else {}),
+            **({"MUSTER_PUBLISH": "1"} if publish else {}),
         },
         # The wrapper writes the real log; these catch anything that fails
         # before it gets that far, which is where launchd problems show up.
@@ -164,7 +164,7 @@ def status(crawler: bool = False) -> int:
         env = plistlib.loads(plist.read_bytes()).get("EnvironmentVariables", {})
         cal = plistlib.loads(plist.read_bytes()).get("StartCalendarInterval", {})
         print(f"sweeps: daily at {cal.get('Hour', 0):02d}:{cal.get('Minute', 0):02d}"
-              f"   publish: {'on' if env.get('REQTRACE_PUBLISH') == '1' else 'off'}")
+              f"   publish: {'on' if env.get('MUSTER_PUBLISH') == '1' else 'off'}")
     elif plist.exists():
         print("crawls: continuously, restarted on failure")
     r = launchctl("print", f"{domain()}/{label}")
@@ -279,7 +279,7 @@ def main() -> int:
     if publish is None:
         try:
             publish = plistlib.loads(PLIST.read_bytes()).get(
-                "EnvironmentVariables", {}).get("REQTRACE_PUBLISH") == "1"
+                "EnvironmentVariables", {}).get("MUSTER_PUBLISH") == "1"
         except (OSError, ValueError):
             publish = False
     plist = build_plist(args.uv or find_uv(), hour, minute, publish)

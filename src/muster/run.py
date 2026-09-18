@@ -1,10 +1,10 @@
 """Run one ingestion pass: fetch every configured board, reconcile, report.
 
 Usage:
-    uv run python -m reqtrace.run                # all greenhouse boards in the audit CSV
-    uv run python -m reqtrace.run --vendor all   # every adapter, one vendor at a time
-    uv run python -m reqtrace.run --token quantium
-    uv run python -m reqtrace.run --from-fixtures   # offline replay, no network
+    uv run python -m muster.run                # all greenhouse boards in the audit CSV
+    uv run python -m muster.run --vendor all   # every adapter, one vendor at a time
+    uv run python -m muster.run --token quantium
+    uv run python -m muster.run --from-fixtures   # offline replay, no network
 
 `--vendor all` is what the scheduled sweep runs; see `scripts/install_autorun.py`.
 """
@@ -36,7 +36,7 @@ GLOBAL = ROOT / "data" / "global_ats_audit.csv"
 RAW = ROOT / "fixtures" / "raw"
 SAMPLES = ROOT / "fixtures" / "samples"
 
-UA = "reqtrace/0.1 (+personal job-search index; contact via repo)"
+UA = "muster/0.1 (+personal job-search index; contact via repo)"
 CONCURRENCY = 4
 
 # Longest one board may run before it is abandoned.
@@ -541,7 +541,7 @@ async def main() -> int:
     # server start was fine while the index was a local SQLite file someone
     # served by hand; against a shared Postgres that nothing else writes to,
     # it meant every board the crawler adopted showed its raw board_token on
-    # the published site until a human happened to run `reqtrace.web` against
+    # the published site until a human happened to run `muster.web` against
     # production. The rows are derived from CSVs in the checkout, so this is
     # the same work whoever runs it.
     print(f"company names: {store.load_companies(company_rows())} rows",

@@ -6,10 +6,10 @@ written, wired and never executed, and `_record_run` was passing an integer
 into a BOOLEAN column the whole time. Type errors like that are invisible until
 a server rejects them.
 
-Skipped unless REQTRACE_TEST_DSN points at a throwaway database:
+Skipped unless MUSTER_TEST_DSN points at a throwaway database:
 
-    createdb reqtrace_test
-    REQTRACE_TEST_DSN=postgresql:///reqtrace_test uv run pytest tests/test_postgres.py
+    createdb muster_test
+    MUSTER_TEST_DSN=postgresql:///muster_test uv run pytest tests/test_postgres.py
 
 The database is emptied between tests, so do not point this at anything real.
 """
@@ -18,13 +18,13 @@ import os
 
 import pytest
 
-from reqtrace import runs, search
-from reqtrace.models import BoardSnapshot, Job
-from reqtrace.store import Store
+from muster import runs, search
+from muster.models import BoardSnapshot, Job
+from muster.store import Store
 
-DSN = os.environ.get("REQTRACE_TEST_DSN")
+DSN = os.environ.get("MUSTER_TEST_DSN")
 pytestmark = pytest.mark.skipif(
-    not DSN, reason="set REQTRACE_TEST_DSN to a throwaway Postgres to run these")
+    not DSN, reason="set MUSTER_TEST_DSN to a throwaway Postgres to run these")
 
 
 def job(ext_id, title="Data Scientist", h="h1", **kw):
@@ -54,7 +54,7 @@ def _refuse_anything_that_looks_real(dsn: str) -> None:
     import urllib.parse
 
     if dsn == os.environ.get("DATABASE_URL"):
-        pytest.exit("REQTRACE_TEST_DSN is the same database as DATABASE_URL. "
+        pytest.exit("MUSTER_TEST_DSN is the same database as DATABASE_URL. "
                     "These tests TRUNCATE. Point them at a throwaway.")
     p = urllib.parse.urlsplit(dsn)
     name = (p.path or "").lstrip("/").split("?")[0]
@@ -62,7 +62,7 @@ def _refuse_anything_that_looks_real(dsn: str) -> None:
     local = host in ("", "localhost", "127.0.0.1", "::1")
     if not (local or "test" in name.lower()):
         pytest.exit(
-            f"REQTRACE_TEST_DSN points at {host or 'a socket'}/{name!r}, which is "
+            f"MUSTER_TEST_DSN points at {host or 'a socket'}/{name!r}, which is "
             "neither local nor named like a test database. These tests TRUNCATE "
             "jobs, board_runs and companies. Use a throwaway, or rename it to "
             "include 'test'.")
@@ -306,7 +306,7 @@ def test_frontier_operations_reconnect_after_the_server_hangs_up(store):
     end of a lap can meet a connection the server already closed. Store.reconcile
     has survived that since the first Postgres sweep; the frontier did not, and
     a scheduled crawl died on AdminShutdown partway through a lap."""
-    from reqtrace.frontier import Frontier
+    from muster.frontier import Frontier
 
     f = Frontier(store)
     f.init_schema()

@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "muster-mcp",
+  "main": "mcp/index.ts",
+  "compatibility_date": "2026-09-15",
+  // The MCP SDK reaches for node builtins (streams, crypto) on the transport path.
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // The site itself is GitHub Pages behind this same proxied hostname. This
+  // route intercepts /mcp only, so the endpoint shares the domain with the
+  // data files it serves and everything else still falls through to Pages.
+  "routes": [
+    { "pattern": "muster.sidharthjoly.com/mcp*", "zone_name": "sidharthjoly.com" }
+  ]
+}

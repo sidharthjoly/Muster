@@ -11,11 +11,11 @@ the same backend detection everything else in the suite runs on.
 
 import pytest
 
-from reqtrace.crawl import (
+from muster.crawl import (
     Finding, harvest_seeds, looks_like_a_directory, seedable_domain,
 )
-from reqtrace.frontier import Frontier
-from reqtrace.store import Store
+from muster.frontier import Frontier
+from muster.store import Store
 
 
 @pytest.fixture()

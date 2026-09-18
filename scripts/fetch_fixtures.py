@@ -15,7 +15,7 @@ from pathlib import Path
 import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from reqtrace.models import token_slug  # noqa: E402
+from muster.models import token_slug  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 AUDIT = ROOT / "data" / "step0_ats_audit.csv"

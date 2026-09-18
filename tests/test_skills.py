@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from reqtrace import skills
+from muster import skills
 
 
 def test_the_terms_kw_throws_away_are_the_ones_this_keeps():

@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from reqtrace.store import DEFAULT_SQLITE, Store  # noqa: E402
+from muster.store import DEFAULT_SQLITE, Store  # noqa: E402
 
 # `function` is a keyword in enough dialects that COPY column lists are a
 # common place for it to trip; quoting every name costs nothing.

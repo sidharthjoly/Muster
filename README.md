@@ -1,9 +1,9 @@
-# ReqTrace
+# Muster
 
 **Open data, analytics and ML roles in Australia — taken from employers' own
 hiring systems, not from job boards.**
 
-### → [reqtrace.sidharthjoly.com](https://reqtrace.sidharthjoly.com/)
+### → [muster.sidharthjoly.com](https://muster.sidharthjoly.com/)
 
 Free, no account, nothing to install.
 
@@ -16,7 +16,7 @@ appears several times under slightly different titles, some listings are
 agencies advertising a role they don't control, and a job that was filled in
 June is still up in September because nobody took it down.
 
-ReqTrace reads the **applicant tracking system** each employer actually hires
+Muster reads the **applicant tracking system** each employer actually hires
 through — Greenhouse, Workday, Lever, Ashby, SmartRecruiters and others. That
 changes three things you can feel while using it:
 
@@ -67,14 +67,46 @@ so you can see why something is near the top.
 > ranks in the tab — the site is static files on a CDN with nothing to upload
 > to, so this is a property of how it is built rather than a promise about what
 > a server does with your data. Nothing is stored; reload and it is gone.
+>
+> This is a claim about **the website**, and it stays true. The separate MCP
+> endpoint below is a server, and its `match_resume` tool necessarily receives
+> the text it ranks. It holds it in memory for the one call and neither stores
+> nor logs it — but that is a promise about what a server does with your data,
+> which is exactly the weaker thing the paragraph above avoids needing. Use the
+> site if you would rather not take it.
 
 The list is **ranked, never filtered** — nothing is hidden because it scored
 badly, and roles that share nothing with your résumé say so on their own row.
 
+## For scripts and agents
+
+The index is published as JSON on the same host, with no key and no rate limit —
+static files with `access-control-allow-origin: *`, so anything can read them:
+
+```bash
+# the data/analytics slice — a few hundred roles, ~170KB gzipped
+curl -s --compressed https://muster.sidharthjoly.com/data/v1/jobs-data.json
+
+# counts, freshness and the matching vocabularies, ~3KB — small enough to poll
+curl -s --compressed https://muster.sidharthjoly.com/data/v1/manifest.json
+```
+
+There is also an **MCP server** for agents, which filters and ranks server-side
+rather than handing over the whole file — `search_roles`, `get_role`,
+`index_health` and `match_resume`:
+
+```
+https://muster.sidharthjoly.com/mcp
+```
+
+Everything both of them serve is a snapshot rebuilt about four times a day, and
+every response says when. The row schema, the versioning promise, and how to
+derive the data slice yourself are in **[docs/api.md](docs/api.md)**.
+
 ## What it deliberately doesn't do
 
 **No "chance of being hired" score.** It is the obvious number to put beside a
-ranked job, and it would be made up. ReqTrace has never seen an application, an
+ranked job, and it would be made up. Muster has never seen an application, an
 interview or a hire — it watches requisitions appear and disappear. What it
 shows instead is what it actually observed: how long a role has been open, and
 how many identical openings the same employer is carrying.
@@ -96,7 +128,7 @@ from the board of the company you'd be working for.
   or `Costar.wd1/co Star Careers` instead of "DXC" and "CoStar". The tidy name
   isn't in the feed for every board, and guessing it wrongly is worse than
   showing what the system said.
-- **The closure history is young.** ReqTrace only knows a role closed if it
+- **The closure history is young.** Muster only knows a role closed if it
   watched it go, and it started watching on 11 September 2026. Weeks before
   that show openings only, and the chart marks them as unwatched rather than
   drawing a confident zero. This gets better with time and cannot be backfilled.
@@ -111,28 +143,28 @@ from the board of the company you'd be working for.
   figures from the export rather than from now.
 
 Is the index wrong about something, or missing an employer you'd expect?
-[Open an issue](https://github.com/sidharthjoly/ReqTrace/issues).
+[Open an issue](https://github.com/sidharthjoly/Muster/issues).
 
 ## Running it yourself
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/sidharthjoly/ReqTrace
-cd ReqTrace
+git clone https://github.com/sidharthjoly/Muster
+cd Muster
 uv sync
 
 # Pull a few boards into a local SQLite index
-uv run python -m reqtrace.run --vendor greenhouse --max-boards 5
+uv run python -m muster.run --vendor greenhouse --max-boards 5
 
 # Browse what you collected
-uv run python -m reqtrace.web        # http://127.0.0.1:8765
+uv run python -m muster.web        # http://127.0.0.1:8765
 ```
 
 Two things to know about the local UI:
 
 - **It is SQLite-only.** Ingestion speaks Postgres, but the query layer is FTS5
-  throughout, so `reqtrace.web` refuses to start with `DATABASE_URL` set rather
+  throughout, so `muster.web` refuses to start with `DATABASE_URL` set rather
   than silently querying the wrong thing. Unset it to browse a local index.
 - **Résumé matching isn't there.** Ranking needs the whole corpus in one pass,
   which only the static export has; the served UI pages 50 rows at a time. That

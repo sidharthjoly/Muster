@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from reqtrace.adapters.base import BoardIncomplete
-from reqtrace.adapters.lever import LeverAdapter
+from muster.adapters.base import BoardIncomplete
+from muster.adapters.lever import LeverAdapter
 
 SAMPLES = Path(__file__).resolve().parent.parent / "fixtures" / "samples" / "lever"
 

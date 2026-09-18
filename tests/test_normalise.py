@@ -1,4 +1,4 @@
-from reqtrace.normalise import html_to_text, parse_location, sanitise_html
+from muster.normalise import html_to_text, parse_location, sanitise_html
 
 
 def test_australian_shapes():
@@ -54,7 +54,7 @@ def test_bare_state_codes_are_not_evidence_of_australia():
 def test_ambiguous_city_names_need_explicit_au_evidence():
     """Newcastle is also England and Perth is also Scotland. Treating the bare
     name as Australian makes UK boards look local."""
-    from reqtrace.normalise import is_australian
+    from muster.normalise import is_australian
 
     for raw in ("Newcastle", "Perth", "Richmond", "Hamilton"):
         city, country, _ = parse_location(raw)
@@ -68,7 +68,7 @@ def test_ambiguous_city_names_need_explicit_au_evidence():
 def test_unambiguous_au_cities_still_resolve():
     for raw in ("Sydney", "Melbourne", "Brisbane", "Adelaide", "Canberra"):
         city, country, _ = parse_location(raw)
-        from reqtrace.normalise import is_australian
+        from muster.normalise import is_australian
         assert is_australian(city, country, raw), raw
 
 

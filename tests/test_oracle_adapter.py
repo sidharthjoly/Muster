@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from reqtrace.adapters.base import BoardIncomplete
-from reqtrace.adapters.oracle import OracleAdapter, parse_token
+from muster.adapters.base import BoardIncomplete
+from muster.adapters.oracle import OracleAdapter, parse_token
 
 SAMPLES = Path(__file__).resolve().parent.parent / "fixtures" / "samples" / "oracle"
 TOKEN = "ebuu.fa.ap1.oraclecloud.com/CX_1"

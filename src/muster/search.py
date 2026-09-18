@@ -53,6 +53,21 @@ ANALYST_EXCLUDE = (
 )
 
 
+def is_data_role(title: str | None) -> bool:
+    """The `data_only` filter, as a predicate over a single title.
+
+    `_filters` expresses this in SQL and the page expresses it in JS; both read
+    the same two tuples, and this is the third reader rather than a third rule.
+    It exists because the static export has to slice rows in Python, where
+    neither of the other two can be called: the SQL form needs a live cursor,
+    and by export time the rows are dicts.
+    """
+    s = f" {(title or '').lower()} "
+    if any(t in s for t in DATA_TERMS):
+        return True
+    return "analyst" in s and not any(x in s for x in ANALYST_EXCLUDE)
+
+
 @dataclass
 class Query:
     q: str = ""

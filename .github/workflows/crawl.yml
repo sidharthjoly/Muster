@@ -28,7 +28,7 @@ on:
     # past 00/06/12/18 and run 4-5 hours, not the 75 minutes this comment
     # used to assume).
     #
-    # The shared `reqtrace-pipeline` concurrency group is what actually
+    # The shared `muster-pipeline` concurrency group is what actually
     # guarantees they do not overlap — but GitHub keeps only ONE pending run
     # per group and discards an older pending one when a newer arrives, so a
     # slot that habitually collided would not merely wait, it would silently
@@ -66,7 +66,7 @@ concurrency:
   # have this job's `adopt` rewriting `data/discovered_boards.csv` while the
   # sweep is reading it, and both are writing the same database. One name for
   # both workflows makes GitHub enforce what the schedule only suggests.
-  group: reqtrace-pipeline
+  group: muster-pipeline
   cancel-in-progress: false
 
 jobs:

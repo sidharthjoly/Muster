@@ -1,13 +1,13 @@
-# ReqTrace — build log
+# Muster — build log
 
-This is the record of how ReqTrace was built: what was measured, what was tried,
+This is the record of how Muster was built: what was measured, what was tried,
 and what was rejected. It was written as the thing was built, so **every figure
 in it is as of the day it was written** — board counts, role counts and coverage
 tables here are historical, not current.
 
 For what the index holds today, see [the README](../README.md), the live site at
-<https://reqtrace.sidharthjoly.com/>, and the ingest health page at
-<https://reqtrace.sidharthjoly.com/runs.html>.
+<https://muster.sidharthjoly.com/>, and the ingest health page at
+<https://muster.sidharthjoly.com/runs.html>.
 
 Last entry: 14 September 2026.
 
@@ -74,11 +74,11 @@ company name and location mix.
 
 ```bash
 uv sync
-uv run python -m reqtrace.run --vendor all           # every adapter, one after another
-uv run python -m reqtrace.run --vendor greenhouse    # ingest every board for one vendor
-uv run python -m reqtrace.run --vendor oracle --token 'ebuu.fa.ap1.oraclecloud.com/CX_1'
-uv run python -m reqtrace.run --vendor ashby --from-fixtures   # offline replay
-uv run python -m reqtrace.web                        # browse at 127.0.0.1:8765
+uv run python -m muster.run --vendor all           # every adapter, one after another
+uv run python -m muster.run --vendor greenhouse    # ingest every board for one vendor
+uv run python -m muster.run --vendor oracle --token 'ebuu.fa.ap1.oraclecloud.com/CX_1'
+uv run python -m muster.run --vendor ashby --from-fixtures   # offline replay
+uv run python -m muster.web                        # browse at 127.0.0.1:8765
 uv run pytest -q
 
 python scripts/install_autorun.py --publish  # sweep daily at 05:30, then publish
@@ -159,12 +159,12 @@ skipped day is a hole in the `first_seen_at` / `closed_at` series that no later
 run can fill; coalescing is the right trade, since the sweep diffs whatever the
 boards say now rather than replaying each missed day.
 
-`REQTRACE_ARGS` is appended to the sweep, so the whole launchd path can be
+`MUSTER_ARGS` is appended to the sweep, so the whole launchd path can be
 smoke-tested without waiting for 05:30 or pulling 357 boards:
 
 ```bash
 env -i HOME="$HOME" PATH=/usr/bin:/bin UV="$(command -v uv)" \
-  REQTRACE_ARGS="--vendor lever --max-boards 1" sh scripts/autorun.sh
+  MUSTER_ARGS="--vendor lever --max-boards 1" sh scripts/autorun.sh
 ```
 
 The store now opens SQLite in **WAL**. A full sweep holds write transactions for
@@ -173,7 +173,7 @@ entirely — the UI would fail for the length of every scheduled run.
 
 ## Static export
 
-**Live: <https://reqtrace.sidharthjoly.com/>** — served from the `gh-pages`
+**Live: <https://muster.sidharthjoly.com/>** — served from the `gh-pages`
 branch. The repo stays private; the *site* is public, because private Pages is
 Enterprise Cloud only. It lands on the personal domain rather than
 `github.io` because the account has an org-level custom domain, so every project
@@ -231,7 +231,7 @@ opt-in from scheduling because it pushes to a remote, and an unattended daily
 push is a bigger commitment than an unattended daily fetch;
 `--no-publish` turns it back off, and reinstalling to change the time inherits
 whatever the installed plist already says rather than silently resetting it.
-`--status` reports both. The mechanism is `REQTRACE_PUBLISH=1` in the plist,
+`--status` reports both. The mechanism is `MUSTER_PUBLISH=1` in the plist,
 tested end to end
 from a bare launchd-style environment, twice in a row, which is how the two bugs
 in that path were found. The first was that `checkout --orphan` refuses a branch
@@ -276,7 +276,7 @@ X than a green tick over a reset index.
 3. Seed it once from the laptop, so the history carries over instead of
    starting from zero:
    ```bash
-   DATABASE_URL='postgres://…' uv run python -m reqtrace.run --vendor all
+   DATABASE_URL='postgres://…' uv run python -m muster.run --vendor all
    ```
    Skip this and the first cloud sweep marks all 51k jobs as new and the
    `first_seen_at` series restarts.
@@ -356,13 +356,13 @@ executed. Running it turned up:
 
 `tests/test_postgres.py` covers all of it against a real server, including a
 test that runs the same snapshots through both backends and diffs the health
-payloads. It skips unless `REQTRACE_TEST_DSN` is set, so `pytest` stays green on
+payloads. It skips unless `MUSTER_TEST_DSN` is set, so `pytest` stays green on
 a machine with no Postgres:
 
 ```bash
 brew install postgresql@17 && brew services start postgresql@17
-createdb reqtrace_test
-REQTRACE_TEST_DSN=postgresql:///reqtrace_test uv run pytest    # 113 tests
+createdb muster_test
+MUSTER_TEST_DSN=postgresql:///muster_test uv run pytest    # 113 tests
 uv run pytest                                                  # 105 + 8 skipped
 ```
 
@@ -483,7 +483,7 @@ fourth vendor gets it wrong again. It now lives once, in
 
 Common Crawl can only find a board it already fetched a URL for **on the ATS's
 own domain**. Three kinds of board are invisible to it by construction, and
-`src/reqtrace/crawl.py` plus `scripts/crawl_careers.py` exist to reach them:
+`src/muster/crawl.py` plus `scripts/crawl_careers.py` exist to reach them:
 
 - **Lever.** `candidates_lever.json` from the Common Crawl sweep contains
   **zero tokens**. That is not a tuning problem; CC barely indexes
@@ -645,7 +645,7 @@ exactly where it stopped. The crawl is continuous even though no process is.
 `crawl_state.json` held the seen-set, the queue and the findings, rewritten
 whole at every checkpoint. That is right for a few hundred kilobytes and wrong
 for a queue that grows forever — three problems, all the same problem: the
-state was a document when it wanted to be a table. `src/reqtrace/frontier.py`
+state was a document when it wanted to be a table. `src/muster/frontier.py`
 moves it, and the properties fall out of the schema:
 
 - **"Seen" becomes "a row exists."** Deduplication is the `url` primary key and
@@ -693,7 +693,7 @@ minutes; measured, it is about 10 seconds.
 
 `crawl_findings.adopted_at` is what makes the pipeline continuous rather than a
 report someone pastes into a CSV. `adopt` writes the ingestable findings into
-`data/discovered_boards.csv` — the file `reqtrace.run` reads — and then marks
+`data/discovered_boards.csv` — the file `muster.run` reads — and then marks
 them adopted.
 
 Those two writes go to different places — the flag to Postgres, the board to a
@@ -826,7 +826,7 @@ The sweep runs *more often than the shortest interval* on purpose. Four runs a
 day against an 8-hour hot interval decouples "when a board becomes due" from
 "when a run happens", so a board falling due at 06:00 waits at most six hours
 rather than until tomorrow. The crawl's two slots are placed in the gaps
-between the four sweeps: they share a `reqtrace-pipeline` concurrency group,
+between the four sweeps: they share a `muster-pipeline` concurrency group,
 and GitHub keeps only ONE pending run per group and discards an older pending
 one when a newer arrives — so a slot that habitually collided would not queue,
 it would silently skip.
@@ -901,7 +901,7 @@ mode is the worst one available. A sweep that times out partway through leaves
 boards it never reached looking exactly like boards whose jobs all closed at
 once, which is the single case `store.py` is built to refuse.
 
-`reqtrace.run --budget N` rotates instead of truncating: sweep the N boards
+`muster.run --budget N` rotates instead of truncating: sweep the N boards
 that went longest without a successful fetch, never-fetched ones first. What
 makes rotating safe where truncating is not is `store.reconcile` — it is only
 ever called for a board that was actually fetched, so a board left out of a
@@ -977,7 +977,7 @@ the budget or the board count moves.
 ## The UI
 
 ```bash
-uv run python -m reqtrace.web        # http://127.0.0.1:8765
+uv run python -m muster.web        # http://127.0.0.1:8765
 ```
 
 A stdlib HTTP server and two static HTML files — no framework, no bundler, no
@@ -1149,14 +1149,14 @@ scripts/fetch_fixtures.py    complete board dumps + trimmed test samples
 scripts/discover_boards.py   Common Crawl -> candidate tokens -> validated AU boards
 scripts/crawl_careers.py     focused careers-page crawl -> the tokens CC cannot see
 scripts/crawl_forever.py     the crawl that doesn't stop: laps, expansion, adoption
-src/reqtrace/crawl.py       the crawler: robots, frontier, scoring, ATS fingerprints
-src/reqtrace/frontier.py    the queue as a table: seen-set, host budgets, findings
+src/muster/crawl.py       the crawler: robots, frontier, scoring, ATS fingerprints
+src/muster/frontier.py    the queue as a table: seen-set, host budgets, findings
 scripts/probe_meta.py        one-off: Meta sitemap + JSON-LD sweep (3 AU roles)
 scripts/probe_nab.py         one-off: is NAB's AU board ingestible (no — WAF)
-src/reqtrace/search.py      FTS5 / tsvector query layer + filters
-src/reqtrace/runs.py        reads board_runs back: freshness, coverage, failures
-src/reqtrace/web.py         stdlib server, three JSON endpoints
-src/reqtrace/static/        two vanilla HTML pages, no build step
+src/muster/search.py      FTS5 / tsvector query layer + filters
+src/muster/runs.py        reads board_runs back: freshness, coverage, failures
+src/muster/web.py         stdlib server, three JSON endpoints
+src/muster/static/        two vanilla HTML pages, no build step
 scripts/install_autorun.py   installs/removes the daily launchd agent
 scripts/autorun.sh           what the agent runs: one --vendor all sweep + export
 scripts/export_static.py     site/ — the same pages with no Python behind them
@@ -1168,7 +1168,7 @@ data/discovered_boards.csv   newly found AU boards, ranked by AU data roles
 fixtures/samples/            committed, test-sized
 fixtures/careers/            the embed shapes careers pages use, for the crawler
 fixtures/raw/                full dumps, git-ignored
-src/reqtrace/adapters/      one module per vendor; failures are isolated
+src/muster/adapters/      one module per vendor; failures are isolated
 ```
 
 ## The seven adapters
@@ -1376,7 +1376,7 @@ Vietnam and the US".
 
 `scripts/probe_nab.py` settles what can be taken from it, reading only what
 robots.txt declares (`Sitemap: /sitemap.xml`, `Crawl-delay: 5`, `Disallow:
-/api/`) under an honest `reqtrace/0.1` user agent:
+/api/`) under an honest `muster/0.1` user agent:
 
 | check | result |
 |---|---|

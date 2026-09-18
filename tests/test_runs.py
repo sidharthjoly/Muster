@@ -11,9 +11,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from reqtrace import runs
-from reqtrace.models import BoardSnapshot, Job
-from reqtrace.store import Store
+from muster import runs
+from muster.models import BoardSnapshot, Job
+from muster.store import Store
 
 
 def job(ext_id, vendor="greenhouse", token="acme"):

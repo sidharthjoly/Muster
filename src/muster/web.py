@@ -4,7 +4,7 @@ No framework and no build step — there is no Node on this machine, and a job
 index for one person does not need a bundler. Two JSON endpoints and a single
 vanilla HTML/JS file.
 
-    uv run python -m reqtrace.web          # http://127.0.0.1:8765
+    uv run python -m muster.web          # http://127.0.0.1:8765
 """
 
 from __future__ import annotations

@@ -39,16 +39,16 @@ from pathlib import Path
 import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from reqtrace.adapters.workday import parse_token as parse_workday_token  # noqa: E402
-from reqtrace.crawl import CASE_INSENSITIVE, plausible_token  # noqa: E402
-from reqtrace.normalise import is_australian, parse_location  # noqa: E402
+from muster.adapters.workday import parse_token as parse_workday_token  # noqa: E402
+from muster.crawl import CASE_INSENSITIVE, plausible_token  # noqa: E402
+from muster.normalise import is_australian, parse_location  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DISC = ROOT / "data" / "discovery"
 OUT = ROOT / "data" / "discovered_boards.csv"
 
 CC_INDEX = "https://index.commoncrawl.org"
-UA = "reqtrace/0.1 (+personal job-search index)"
+UA = "muster/0.1 (+personal job-search index)"
 
 # CC index URL patterns per vendor, the regex that lifts the token back out,
 # and how to assemble it. The third element exists for Workday, whose identity

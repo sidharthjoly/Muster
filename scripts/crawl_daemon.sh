@@ -70,11 +70,11 @@ cd "$ROOT" || exit 1
 # frontier rows a day. Discovery is measured in weeks; this is a pace it can
 # hold for months without filling a 0.5 GB database.
 #
-# REQTRACE_CRAWL_ARGS narrows it for a smoke test without editing the plist.
+# MUSTER_CRAWL_ARGS narrows it for a smoke test without editing the plist.
 # shellcheck disable=SC2086 - word splitting is the point for the args var
 "$UV" run --project "$ROOT" python scripts/crawl_forever.py \
     --expand --lap-pages 20 --rest 360 \
-    ${REQTRACE_CRAWL_ARGS:-} >> "$LOG" 2>&1
+    ${MUSTER_CRAWL_ARGS:-} >> "$LOG" 2>&1
 status=$?
 
 echo "=== $(date -u +%Y-%m-%dT%H:%M:%SZ) crawler exited, status $status ===" >> "$LOG"

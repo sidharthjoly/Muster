@@ -16,9 +16,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from reqtrace.models import BoardSnapshot, Job
-from reqtrace.run import board_tier, stalest, sweep
-from reqtrace.store import Store
+from muster.models import BoardSnapshot, Job
+from muster.run import board_tier, stalest, sweep
+from muster.store import Store
 
 
 @pytest.fixture
@@ -188,7 +188,7 @@ def test_a_board_that_overruns_is_cut_off_without_closing_its_jobs(store, monkey
     `complete=False`, or `reconcile` would read the partial result as every job
     on the board closing at once."""
     import asyncio
-    from reqtrace import run as R
+    from muster import run as R
 
     record(store, "slow", hours_ago=1)
     assert store.open_jobs("greenhouse", "slow") != {}
@@ -218,7 +218,7 @@ def test_boards_finished_before_a_kill_are_already_recorded(store, monkeypatch):
     it finished survives the run not finishing.
     """
     import asyncio
-    from reqtrace import run as R
+    from muster import run as R
 
     monkeypatch.setattr(R, "FLUSH_EVERY", 2)
     monkeypatch.setattr(R, "CONCURRENCY", 1)   # so completion order is the list
