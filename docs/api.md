@@ -58,6 +58,12 @@ as "not published for this role", which is common and not an error.
 | `kw` | 95% | the role's indexed vocabulary — the rare words from its ad, for search. Terms more than 4% of the corpus carries are dropped, so common tools are deliberately absent |
 | `sk` | 35% | space-separated skill slugs detected in the ad, from the closed vocabulary in `manifest.json`. **This, not `kw`, is what ranking uses** |
 
+`title` and `apply_url` can disagree, and the title is the one to trust. Workday
+builds the slug in its URL when the requisition is created and never rebuilds it,
+so an employer who retitles a req leaves the old wording in the link — the same
+req `762190WD` is carried on two PwC boards under two different slugs. `title` is
+what the ATS returns today; the URL is what it was called on the day it opened.
+
 There is no description field. The ad body is read at export time for `kw` and
 `sk` and then dropped; it is most of the corpus by weight and the site renders
 no excerpt.
