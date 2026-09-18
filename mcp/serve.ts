@@ -1,9 +1,12 @@
 /**
- * Run the MCP endpoint locally: `node mcp/serve.ts` (Node strips the types).
+ * Run the MCP endpoint locally: `npm run serve` (Node strips the types).
  *
- * `neon dev` is the deployed-shape runner, but it needs the CLI authenticated
- * against the branch. This needs nothing — the server holds no database
- * connection, so a plain Node listener is the whole local environment.
+ * `wrangler dev` is the deployed-shape runner — it runs this under workerd,
+ * which is what production actually is, and it is the one to reach for when the
+ * bug might be about the runtime. This is the other end of that trade: a plain
+ * Node listener with nothing to install or sign in to, which is enough because
+ * the server holds no database connection and no bindings. It reads the same
+ * published files over HTTPS that the deployed worker reads.
  */
 import { serve } from "@hono/node-server";
 import app from "./index.ts";

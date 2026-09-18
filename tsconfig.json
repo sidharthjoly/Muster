@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["mcp/**/*.ts", "neon.ts"]
+  "include": ["mcp/**/*.ts"]
 }
