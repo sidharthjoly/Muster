@@ -116,7 +116,8 @@ It exposes `search_roles`, `get_role`, `index_health` and `match_resume`.
 Everything both interfaces serve is a snapshot rebuilt about four times a day,
 and every response carries the build time. The row schema, the versioning
 promise and how to derive the data slice yourself are in
-**[docs/api.md](docs/api.md)**.
+**[docs/api.md](docs/api.md)**; the tool-by-tool reference is in
+**[docs/mcp.md](docs/mcp.md)**.
 
 ## Limitations
 

@@ -100,13 +100,13 @@ https://muster.sidharthjoly.com/mcp
 
 It is a Cloudflare Worker on the same hostname as the files above — a route on
 `/mcp`, with everything else falling through to the static site. It sits there
-rather than next to the database because it has no database: it reads the published files above and filters them in memory,
-which is also why it can be a single stateless handler with nothing to
-provision.
+rather than next to the database because it has no database: it reads the files
+documented above and filters them in memory.
 
 Tools: `search_roles`, `get_role`, `index_health`, `match_resume`. Every result
 carries the snapshot's `generated_at` and age, for the same reason this document
-opens with it.
+opens with it. **Full reference — parameters, responses and error shapes — is in
+[mcp.md](mcp.md).**
 
 `match_resume` takes résumé text. It is scored in memory and is not stored or
 logged, but it does travel to that server — unlike the website, which does the
