@@ -20,3 +20,8 @@ site/
 .env.local
 node_modules/
 .wrangler/
+# `.claude/skills/` is vendored and pinned by skills-lock.json, so it stays.
+# This one is per-machine — permission rules for whoever is sitting here — and
+# a public repo is the wrong place for it. It was covered only by a global
+# ignore on this laptop, which does nothing for a clone or for CI.
+.claude/settings.local.json
