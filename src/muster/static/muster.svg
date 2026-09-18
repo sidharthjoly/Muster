@@ -1,11 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none"
-     stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"
-     role="img" aria-label="Muster">
+     color="#5980a6" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"
+     stroke-linejoin="round" role="img" aria-label="Muster">
   <!-- A stock yard seen from above: the race funnels in from the left, the
        enclosure holds what it gathered, and the gate never closes. One weight
-       throughout, one colour, inherited — so it sits in the page's accent
-       without a second file. `favicon.svg` is the same geometry at a heavier
-       stroke, because 3.2 units close the gate up at 16px. -->
+       throughout, one colour. `favicon.svg` is the same geometry at a heavier
+       stroke, because 3.2 units close the gate up at 16px.
+
+       `color` here rather than a hard-coded stroke, and the pair is the point.
+       Fetched on its own — a README, a social card — nothing is inheriting, so
+       `currentColor` needs a value and this gives it one: the Industry accent,
+       which carries on a light page and a dark one alike. Inlined into a page,
+       any stylesheet rule setting `color` outranks this attribute and the mark
+       takes the page's accent instead. The same precedence that filled the
+       favicon solid, pointed the right way. -->
   <path d="M22 9 L38 9 A5 5 0 0 1 43 14 L43 34 A5 5 0 0 1 38 39 L22 39 A5 5 0 0 1 17 34 L17 29"/>
   <path d="M17 19 L17 14 A5 5 0 0 1 22 9"/>
   <path d="M3 10 L15 20"/>

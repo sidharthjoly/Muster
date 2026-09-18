@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src/muster/static/muster.svg" alt="" width="84" height="84">
+</p>
+
 <h1 align="center">Muster</h1>
 
 <p align="center">
