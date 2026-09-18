@@ -9,16 +9,20 @@
        Naming that token in full here is what broke this file once: an XML
        comment cannot hold two hyphens, and the favicon silently rendered
        nothing.
-       The style block only lifts it for a dark tab bar; renderers that ignore
-       the block still get the attribute. -->
-  <style>
-    @media (prefers-color-scheme: dark) { .yard { stroke: #8FB3D4; fill: #8FB3D4; } }
-  </style>
-  <g class="yard" stroke="#5980a6" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
+
+       No stylesheet, and that is the second thing this file learned. A
+       prefers-color-scheme block lifting the colour on a dark tab bar put
+       `fill` on the group holding these paths, a CSS declaration beats the
+       `fill="none"` above, fill inherits — and the enclosure went solid with
+       the dot swallowed inside it. Only in dark mode, so it looked perfect
+       to whoever wrote it. One colour, stated four times, cannot do that.
+       This blue carries about 4:1 against a light tab bar and about 4:1
+       against a dark one, so it does not need the help. -->
+  <g stroke="#5980a6" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M22 9 L38 9 A5 5 0 0 1 43 14 L43 34 A5 5 0 0 1 38 39 L22 39 A5 5 0 0 1 17 34 L17 29"/>
     <path d="M17 19 L17 14 A5 5 0 0 1 22 9"/>
     <path d="M3 10 L15 20"/>
     <path d="M3 38 L15 28"/>
   </g>
-  <circle class="yard" cx="30" cy="24" r="4" fill="#5980a6" stroke="none"/>
+  <circle cx="30" cy="24" r="4" fill="#5980a6" stroke="none"/>
 </svg>
