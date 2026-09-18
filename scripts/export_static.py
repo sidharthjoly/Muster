@@ -59,9 +59,11 @@ SITE = ROOT / "site"
 PAGES = ("index.html", "runs.html")
 # The mark. Copied beside the pages rather than inlined into them: the nav
 # carries its own copy of the geometry so the header paints with no second
-# request, and these two are what everything else points at — `favicon.svg`
-# from the pages' <link>, `muster.svg` from a README or a social card.
-ASSETS = ("favicon.svg", "muster.svg")
+# request, and these three are what everything else points at — `favicon.svg`
+# from the pages' <link>, `muster.svg` where only the mark fits, and
+# `muster-lockup.svg` — mark and word as one object — wherever the name has
+# to be read rather than set in type it cannot count on.
+ASSETS = ("favicon.svg", "muster.svg", "muster-lockup.svg")
 # The custom domain has to be rebuilt into `site/` on every export: `publish`
 # force-pushes an orphan commit built only from this directory, so a CNAME
 # file that GitHub writes to the gh-pages branch survives exactly until the

@@ -1,8 +1,6 @@
-<p align="center">
-  <img src="src/muster/static/muster.svg" alt="" width="84" height="84">
-</p>
-
-<h1 align="center">Muster</h1>
+<h1 align="center">
+  <img src="src/muster/static/muster-lockup.svg" alt="Muster" width="260" height="55">
+</h1>
 
 <p align="center">
   <strong>Open data, analytics and ML roles in Australia — taken from employers' own
