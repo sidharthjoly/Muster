@@ -18,6 +18,15 @@ when the export ran and not necessarily now.
 
 ## Connecting
 
+One click, if your editor takes an install link. Both carry the same thing the
+rest of this section types out by hand — a transport and a URL, no key, nothing
+to substitute:
+
+<p>
+  <a href="https://vscode.dev/redirect/mcp/install?name=muster&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmuster.sidharthjoly.com%2Fmcp%22%7D"><img alt="Add Muster to VS Code" src="https://img.shields.io/badge/VS%20Code-add%20Muster-0098FF.svg"></a>
+  <a href="https://cursor.com/en/install-mcp?name=muster&config=eyJ1cmwiOiJodHRwczovL211c3Rlci5zaWRoYXJ0aGpvbHkuY29tL21jcCJ9"><img alt="Add Muster to Cursor" src="https://img.shields.io/badge/Cursor-add%20Muster-000000.svg"></a>
+</p>
+
 Claude Code:
 
 ```bash

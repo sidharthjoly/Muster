@@ -114,6 +114,14 @@ rather than handing over the whole file:
 claude mcp add --transport http muster https://muster.sidharthjoly.com/mcp
 ```
 
+Or one click — the endpoint is a URL with no key, so there is nothing in the
+config to fill in first:
+
+<p>
+  <a href="https://vscode.dev/redirect/mcp/install?name=muster&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmuster.sidharthjoly.com%2Fmcp%22%7D"><img alt="Add Muster to VS Code" src="https://img.shields.io/badge/VS%20Code-add%20Muster-0098FF.svg"></a>
+  <a href="https://cursor.com/en/install-mcp?name=muster&config=eyJ1cmwiOiJodHRwczovL211c3Rlci5zaWRoYXJ0aGpvbHkuY29tL21jcCJ9"><img alt="Add Muster to Cursor" src="https://img.shields.io/badge/Cursor-add%20Muster-000000.svg"></a>
+</p>
+
 It exposes `search_roles`, `get_role`, `index_health` and `match_resume`.
 Everything both interfaces serve is a snapshot rebuilt about four times a day,
 and every response carries the build time. The row schema, the versioning
