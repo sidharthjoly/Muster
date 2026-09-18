@@ -38,11 +38,65 @@ const LEVELS: string[][] = [
   ["head of", "director", "chief", "vp ", "vice president", "general manager"],
 ];
 
+// For a job title. Four words, every one of them about the job, so the most
+// senior word present is the level being advertised.
 function levelOf(text: string | undefined): number | null {
   const low = ` ${(text || "").toLowerCase()} `;
   let best: number | null = null;
   LEVELS.forEach((words, i) => {
     if (words.some((w) => low.includes(w))) best = i;
+  });
+  return best;
+}
+
+// For a résumé, which is not a job title and breaks when read like one. Taking
+// the most senior word anywhere in two pages of career history made every data
+// résumé Principal, because every data résumé contains "principal component
+// analysis" — and the stretch penalty then could not fire at all, since it
+// needs a job two rungs above the reader and the scale stops one rung up.
+// "leadership" and "internal" were doing the same damage more quietly.
+//
+// So the CV side looks for the shape a résumé states its own level in: a level
+// word beside a role word. "Graduate data scientist", "seeking junior roles".
+// When the résumé never says, this reads null and nothing is penalised, which
+// is the honest answer and the one the old code could not give.
+// `ROLES` names job titles; a résumé as often names the field — "Head of Data
+// Science", "graduate analytics role" — so the anchors add the field names and
+// the bare words a résumé uses to say it is describing a job at all. These
+// widen the level read only; title scoring still uses `ROLES` alone.
+const CV_ANCHORS = [
+  ...ROLES, "data science", "data analytics", "analytics",
+  "role", "roles", "position", "positions",
+].sort((a, b) => b.length - a.length);
+
+// Sixteen characters of slack: "junior data science roles" fits, and
+// "principal component analysis." cannot reach whatever the next sentence says.
+const CV_NEAR = 16;
+
+const CV_LEVEL: (RegExp | null)[] = (() => {
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const anchors = CV_ANCHORS.map(esc).join("|");
+  // Word-ish, so "leadership" is not `lead`, "internal" is not `intern` and
+  // "graduated" is not `graduate` — the substring matching was half the bug.
+  const edge = "(?:^|[^a-z])";
+  const tail = "(?![a-z])";
+  const gap = `[^\\n]{0,${CV_NEAR}}`;
+  return LEVELS.map((words) => {
+    if (!words.length) return null;                     // mid is never claimed
+    const lv = [...words].sort((a, b) => b.length - a.length).map(esc).join("|");
+    return new RegExp(
+      `${edge}(?:${lv})${tail}${gap}${edge}(?:${anchors})${tail}`
+      + `|${edge}(?:${anchors})${tail}${gap}${edge}(?:${lv})${tail}`, "i");
+  });
+})();
+
+// Highest wins, as on the title side: a résumé that has been junior and is now
+// senior is senior. The risk this keeps is a senior colleague named in passing.
+function cvLevelOf(text: string | undefined): number | null {
+  const low = ` ${(text || "").toLowerCase()} `;
+  let best: number | null = null;
+  CV_LEVEL.forEach((re, i) => {
+    if (re && re.test(low)) best = i;
   });
   return best;
 }
@@ -95,7 +149,7 @@ export function readCV(text: string, m: Manifest): CV {
   return {
     skills,
     roles,
-    level: levelOf(text),
+    level: cvLevelOf(text),
     on: !!(text || "").trim() && (skills.size > 0 || roles.length > 0),
   };
 }
@@ -150,4 +204,4 @@ export function rank(jobs: Job[], cv: CV, m: Manifest): Map<Job, Match> {
   return out;
 }
 
-export const _internals = { levelOf, ROLES, LEVELS, TITLE_WEIGHT, STRETCH };
+export const _internals = { levelOf, cvLevelOf, ROLES, LEVELS, TITLE_WEIGHT, STRETCH };

@@ -36,8 +36,34 @@ RESUMES = [
     "experimentation, GCP.",
     "Business analyst with Excel, Power BI and SQL. Stakeholder management, agile.",
     "Machine learning engineer: LLMs, RAG, prompt engineering, Kubernetes, Docker.",
+    # The two the substring reader got wrong, kept in the parity set as well so
+    # a copy that keeps the old rule shows up here too.
+    "Graduate data scientist. Python, pandas, scikit-learn. Built models using "
+    "principal component analysis and clustering.",
+    "Demonstrated leadership in team projects. Data analyst intern, SQL and Excel.",
     "I am a qualified pastry chef with ten years in fine dining.",
     "",
+]
+
+# What each résumé says its own level is. A list of answers rather than a list
+# of texts, because parity is not enough here: both copies read a graduate as
+# Principal for months and agreed with each other perfectly the whole time.
+#
+# `levelOf` takes the most senior word anywhere in the text, which is right for
+# a job title and wrong for a résumé — "principal component analysis" is on
+# every data CV, and reading it as Principal put the reader at the top of the
+# scale, where the stretch penalty can never fire because it needs a job two
+# rungs higher and there are not two rungs left.
+LEVEL_CASES = [
+    ("Graduate data scientist. Python and pandas. Built models using "
+     "principal component analysis and clustering.", 0),
+    ("Demonstrated leadership in team projects. Data analyst intern, SQL.", 0),
+    ("Student seeking graduate/junior data science roles. Python, SQL.", 1),
+    ("Senior Data Engineer, eight years of Python and Spark.", 3),
+    ("Head of Data Science. PyTorch, TensorFlow, MLOps.", 5),
+    # Says nothing about its own level, so nothing is claimed for it. The old
+    # reader called this a graduate on the strength of "graduated".
+    ("Graduated 2024. Built internal dashboards in Power BI.", None),
 ]
 
 # Rows in the shape the export writes: a packed `sk` column and a title.
@@ -151,3 +177,37 @@ def test_both_copies_agree_a_resume_from_another_field_cannot_be_ranked(tmp_path
     assert page == ts
     assert page[-1] is False and page[-2] is False  # empty, and the pastry chef
     assert page[0] is True
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="needs node to run both copies")
+def test_a_resume_states_its_own_level_rather_than_naming_it_in_passing(tmp_path):
+    """Both copies, and the right answer from each.
+
+    The level only matters through `stretch`, and `stretch` only fires two rungs
+    up, so a reader that drifts upwards does not make the ranking a bit wrong —
+    it switches the penalty off entirely and silently.
+    """
+    texts = [t for t, _ in LEVEL_CASES]
+    payload = json.dumps([_manifest(), texts, JOBS])
+    page, ts = _from_page(payload, tmp_path), _from_ts(payload, tmp_path)
+    for (text, want), p, t in zip(LEVEL_CASES, page, ts):
+        assert p["on"] and t["on"], f"{text[:40]!r} was not rankable at all"
+        assert (p["level"], t["level"]) == (want, want), (
+            f"{text[:50]!r}: page read {p['level']}, endpoint read {t['level']}, "
+            f"expected {want}")
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="needs node to run both copies")
+def test_a_graduate_resume_makes_a_principal_role_a_stretch(tmp_path):
+    """The penalty the level read exists to serve.
+
+    `JOBS[6]` is "Principal Research Scientist". A graduate reading 0 is four
+    rungs below it; a graduate misread as 4 is level with it, which is how a
+    Principal req came back `stretch: false` to someone who has never held a job.
+    """
+    grad = LEVEL_CASES[0][0]
+    payload = json.dumps([_manifest(), [grad], JOBS])
+    for got in (_from_page(payload, tmp_path)[0], _from_ts(payload, tmp_path)[0]):
+        assert got["level"] == 0
+        assert got["stretch"][6] is True, "Principal req was not marked a stretch"
+        assert got["stretch"][3] is False, "Graduate Data Analyst was"
