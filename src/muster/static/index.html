@@ -7,6 +7,10 @@
      dependency: this page also ships as a static export that has to work as a
      file opened from disk with no network, so every font token falls back to
      the platform UI face and the layout is measured in rem, not in Barlow. -->
+<!-- The mark, drawn for 16px. SVG rather than .ico because the page is
+     also opened as a file from disk, where a relative svg works and a
+     generated multi-size bundle would be one more build step. -->
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap">
@@ -122,6 +126,8 @@
     letter-spacing:.02em; margin-right:auto; color:inherit;
     text-decoration:none; }
   .nav-brand em { font-style:normal; color:var(--color-accent); }
+  .nav-brand { display:inline-flex; align-items:center; gap:.45em; }
+  .nav-mark { width:1.15em; height:1.15em; flex:none; color:var(--color-accent); }
   .nav a { color:inherit; text-decoration:none; font-size:14px; }
   .nav a:hover, .nav a[aria-current='page'] { color:var(--color-accent); }
   header.bar { border-bottom:1px solid var(--color-divider);
@@ -453,7 +459,7 @@
 
   <header class="bar">
     <nav class="nav">
-      <a class="nav-brand" href="./">MUSTER</a>
+      <a class="nav-brand" href="./"><svg class="nav-mark" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 9 L38 9 A5 5 0 0 1 43 14 L43 34 A5 5 0 0 1 38 39 L22 39 A5 5 0 0 1 17 34 L17 29"/><path d="M17 19 L17 14 A5 5 0 0 1 22 9"/><path d="M3 10 L15 20"/><path d="M3 38 L15 28"/><circle cx="30" cy="24" r="3.4" fill="currentColor" stroke="none"/></svg>MUSTER</a>
       <!-- The composition drew four destinations and two account actions. This
            site is two pages, so it links the two that exist rather than
            shipping dead anchors: the index, and the ingest-health console. -->
