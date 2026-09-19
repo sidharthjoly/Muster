@@ -1,15 +1,38 @@
 # Muster — build log
 
-This is the record of how Muster was built: what was measured, what was tried,
-and what was rejected. It was written as the thing was built, so **every figure
-in it is as of the day it was written** — board counts, role counts and coverage
-tables here are historical, not current.
+This is the record of how Muster was built. It shows what was measured, what was tried, and what was rejected. It was written while the project was being built. Therefore, **every number in it is from the day it was written**. Board counts, role counts, and coverage tables are historical, not current.
 
-For what the index holds today, see [the README](../README.md), the live site at
+To see what the index holds today, see [the README](../README.md), the live site at
 <https://muster.sidharthjoly.com/>, and the ingest health page at
 <https://muster.sidharthjoly.com/runs.html>.
 
 Last entry: 14 September 2026.
+
+**Foundations** ·
+[the audit that set the build order](#step-0--the-audit-that-decided-the-build-order) ·
+[running it](#running-it) ·
+[the seven adapters](#the-seven-adapters) ·
+[layout](#layout)
+
+**Keeping it fed** ·
+[closure detection](#closure-detection) ·
+[scheduling](#scheduling) ·
+[static export](#static-export) ·
+[running it on GitHub instead](#running-it-on-github-instead)
+
+**Finding employers** ·
+[part one: Common Crawl](#board-discovery-hard-problem-1) ·
+[part two: a focused crawler](#board-discovery-part-two-an-actual-crawler) ·
+[part three: the crawl that doesn't stop](#board-discovery-part-three-the-crawl-that-doesnt-stop)
+
+**What was out of reach** ·
+[global employers](#global-employers) ·
+[the big four banks](#the-big-four-banks--investigated)
+
+**Surfaces** ·
+[the UI and résumé matching](#the-ui) ·
+[next](#next) ·
+[license](#license)
 
 ---
 
@@ -375,40 +398,38 @@ published site does its searching in the browser, so the export only has to
 
 ## Closure detection
 
-The headline feature. Every run pulls the *full* board and diffs it against the
-stored open set; anything that fell off is stamped `closed_at`. A re-listed job
-reopens (`closed_at` back to NULL) with `first_seen_at` preserved, so the
-hiring-signal time series stays intact.
+The main feature works like this:
+Every run pulls the full board. It compares the board to the stored open set. Anything that is no longer there gets a `closed_at` timestamp. 
 
-**An empty board retires nothing on the first sight of it.** SmartRecruiters
-answers `200 {"totalFound": 0}` both for a board whose roles were all filled and
-for a token that no longer exists, so a board must come back empty twice in a row
-before anything is closed. That trades a small, bounded ghost-job window — one
-extra cycle for a board that genuinely emptied — against irreversible corruption
-of the `first_seen_at`/`closed_at` history, which the brief values above the
-listings.
+If a job is listed again, it reopens. The `closed_at` value goes back to NULL. The `first_seen_at` time stays the same. This keeps the hiring-signal time series correct.
 
-The guard that makes it safe: **only a complete board may retire jobs.** A
-truncated or failed fetch is indistinguishable from mass closures, so
-`BoardSnapshot.complete` is load-bearing — the Greenhouse adapter sets it only
-when `meta.total` matches the number of jobs parsed, and `reconcile()` skips
-closures otherwise. `test_closure_detection.py` pins this down.
+**An empty board shows nothing the first time you see it.** SmartRecruiters
+
+The system returns `200 {"totalFound": 0}` for two different reasons:
+1. A board where all jobs are filled.
+2. A token that does not exist.
+
+Because of this, a board must appear empty twice in a row before the system closes it. This creates a small window where a truly empty board might stay open for one extra cycle. However, this is better than letting the `first_seen_at` and `closed_at` history get ruined by incorrect data.
+
+The safety rule is: **only a complete board can retire jobs.**
+
+A partial or failed fetch looks the same as many closed jobs. Because of this, `BoardSnapshot.complete` is very important. The Greenhouse adapter only sets this value when `meta.total` matches the number of jobs found. If they do not match, `reconcile()` skips the closures. You can find this in `test_closure_detection.py`.
 
 ## Board discovery (hard problem #1)
 
-Coverage is capped entirely by how many ATS tokens we know about, and there's no
-registry mapping companies to tokens. `scripts/discover_boards.py` harvests them.
+Coverage depends only on the number of ATS tokens we find. There is no list that links companies to tokens. The script `scripts/discover_boards.py` finds them.
 
-**The unit of discovery is a board, never a job.** Crawling job links would
-rebuild a job board — duplicates, dead links, no closure detection, and HTML
-parsing across thousands of sites. One board token, found once, hands the
-pipeline that employer's entire requisition history forever. It's also a far
-smaller problem: thousands of tokens to find once, versus millions of job URLs
-to re-crawl continuously.
+**The unit of discovery is a board, not a job.**
 
-It's barely a crawler, either. Common Crawl already crawled the web; we query
-their URL index for the ATS domains and validate candidates against the vendors'
-own JSON feeds.
+Crawling job links would mean rebuilding a job board. This involves dealing with:
+*   Duplicate listings
+*   Dead links
+*   No way to know when a job is filled
+*   Parsing HTML from thousands of sites
+
+One board token, found once, gives you the entire history of an employer's jobs. This is a much smaller problem. You only need to find thousands of tokens once, instead of crawling millions of job URLs all the time.
+
+It is not really a crawler. Common Crawl already crawled the web. We look at their URL index for the ATS domains. Then, we check the candidates against the vendors' own JSON feeds.
 
 ```bash
 uv run python scripts/discover_boards.py harvest  --vendor greenhouse
@@ -416,26 +437,16 @@ uv run python scripts/discover_boards.py validate --vendor greenhouse
 uv run python scripts/discover_boards.py report     # -> data/discovered_boards.csv
 ```
 
-Harvest → filter obvious URL noise → validate against the vendor endpoint (404
-means junk) → keep only boards with AU roles. Validation uses the *light*
-Greenhouse endpoint, since existence and locations are all that's needed to
-decide whether a board is worth adopting.
+Collect the data. Remove obvious junk URLs. Check the vendor endpoint to see if the data is valid (a 404 error means it is junk). Only keep boards that have AU roles. Use the *light* Greenhouse endpoint for validation. This is because we only need to know if the board exists and where it is located to decide if we should adopt it.
 
 Two things learned building it:
 
-- **Common Crawl barely indexes `jobs.lever.co`** — a full sweep returns
-  essentially just `robots.txt`. Lever tokens have to come from elsewhere (VC
-  portfolio pages, certificate transparency logs).
-- **AU detection has to be conservative here.** A false positive costs a
-  permanently wrong board in the seed list, so ambiguous city names don't count:
-  `Newcastle` is also England and `Perth` also Scotland, so they need explicit AU
-  evidence. Discovery surfaced this — the first smoke test proposed a UK coffee
-  chain as an Australian employer.
+- **Common Crawl does not index much of `jobs.lever.co`** — a full search finds almost only `robots.txt`. You must get Lever tokens from other places, like VC portfolio pages or certificate transparency logs.
+- **AU detection must be very careful here.** A false positive puts a wrong board in the seed list forever. Do not count ambiguous city names: `Newcastle` is also in England and `Perth` is also in Scotland. They need clear proof of being in Australia. Discovery found this — the first smoke test thought a UK coffee chain was an Australian employer.
 
 ### Results of the first sweep
 
-One Common Crawl collection yielded 6,832 candidate tokens; validation kept the
-boards that actually list Australian roles:
+One Common Crawl collection found 6,832 candidate tokens. Validation kept only the boards that list Australian roles:
 
 | vendor | AU boards | AU jobs | AU data roles |
 |---|---|---|---|
@@ -444,62 +455,32 @@ boards that actually list Australian roles:
 | smartrecruiters | 30 | 266 | 24 |
 | **total (deduped)** | **317** | **1,758** | **207** |
 
-308 of those were not in the hand-curated audit. Ingesting all 200 configured
-Greenhouse boards: **27,085 jobs, 958 open in Australia, 0 board failures.**
+308 of those were not in the hand-curated audit. After taking in all 200 configured Greenhouse boards: **27,085 jobs, 958 open in Australia, 0 board failures.**
 
-Notable finds the manual audit missed: Xero, Lendi Group, DoorDash ANZ, Prezzee,
-Neara, Firmus, Maincode — and `zipcolimited`, the *real* Zip Co, correcting the
-false positive that slug-guessing produced.
+Notable finds the manual audit missed: Xero, Lendi Group, DoorDash ANZ, Prezzee, Neara, Firmus, Maincode — and `zipcolimited`, the *real* Zip Co, correcting the false positive that slug-guessing produced.
 
-**Adoption is append-only.** A board whose AU roles all get filled drops out of
-the next sweep; if that removed it from the CSV the pipeline would stop fetching
-it and every job it left behind would sit open forever — the exact ghost-job
-problem this project exists to kill. Once adopted, a board is fetched forever.
+**Adoption is append-only.** If a board has all its AU roles filled, it is removed from the next sweep. If the system removed it from the CSV, the pipeline would stop fetching it. Every job left behind would stay open forever. This is the "ghost-job" problem this project solves. Once a board is adopted, it is fetched forever.
 
 Cadence: discovery is a **monthly batch** (new employers appear slowly);
-ingestion stays on the daily cron. Public datasets and documented endpoints
-only — if discovery ever needs proxies or bot evasion, stop.
+ingestion stays on the daily cron. Public datasets and documented endpoints only — if discovery ever needs proxies or bot evasion, stop.
 
 ### Token case sensitivity, which bites three times
 
-Greenhouse, Ashby and SmartRecruiters resolve tokens case-insensitively, so a
-crawl returns `OpenAI` and `openai` as separate candidates for one board — 17
-such pairs in the first sweep, deduped in the report step. **Lever is the
-exception**: `jobs.lever.co/Zeller` resolves and `/zeller` 404s, so Lever tokens
-keep their case and must never be lowercased.
+Greenhouse, Ashby, and SmartRecruiters treat tokens as case-insensitive. This means a crawl sees `OpenAI` and `openai` as two different candidates for the same board. There were 17 such pairs in the first sweep, which were removed during the report step.
 
-**Workday is the third bite, and it cost 30% of a sweep to find.** Adding it
-meant this split had to be checked for a vendor nobody had checked it for, and
-the answer was not the one the two-vendor version of this section implied: 216
-of 720 validated Workday boards were case variants of another. See the Workday
-section below for the evidence.
+**Lever is the exception**: `jobs.lever.co/Zeller` works, but `/zeller` gives a 404 error. Therefore, Lever tokens must keep their original casing and should never be converted to lowercase.
 
-The split had accumulated three independent copies — `run.py`,
-`discover_boards.py` and `crawl_forever.py adopt` — which is exactly how a
-fourth vendor gets it wrong again. It now lives once, in
-`crawl.CASE_INSENSITIVE`, and the readers import it.
+**Workday is the third bite. It cost 30% of a sweep to find.** Adding it meant this split had to be checked for a vendor that had not checked it before. The answer was not what the two-vendor version of this section suggested: 216 of 720 validated Workday boards were case variants of another. See the Workday section below for the evidence.
+
+The split had three separate copies: `run.py`, `discover_boards.py`, and `crawl_forever.py`. This is how a fourth vendor makes a mistake again. Now, it only exists in `crawl.CASE_INSENSITIVE`, and other files import it from there.
 
 ## Board discovery, part two: an actual crawler
 
-Common Crawl can only find a board it already fetched a URL for **on the ATS's
-own domain**. Three kinds of board are invisible to it by construction, and
-`src/muster/crawl.py` plus `scripts/crawl_careers.py` exist to reach them:
+Common Crawl can only find a board if it has already fetched a URL on the ATS's own domain. Three types of boards are hidden from it by design. The files `src/muster/crawl.py` and `scripts/crawl_careers.py` were made to reach these:
 
-- **Lever.** `candidates_lever.json` from the Common Crawl sweep contains
-  **zero tokens**. That is not a tuning problem; CC barely indexes
-  `jobs.lever.co` at all.
-- **Embeds.** An employer who iframes their board
-  (`boards.greenhouse.io/embed/job_board/js?for=<token>`) never produces a
-  crawlable ATS URL. The token exists only inside *their* HTML, in a query
-  string — and the CC-index regex reads `embed` out of that path and throws the
-  real token away.
-- **Two-part identities.** Workday is `tenant.wdN/Site`, Oracle is
-  `host/CX_1`, Eightfold is `tenant/domain`. None is a path segment, so a URL
-  index has nothing to lift out. `adapters/workday.py` already said these
-  "come from careers-page crawling, never from slug guessing" — this is that
-  crawling. Eightfold is the sharpest case: its identity needs the *employer's*
-  domain, which a URL index never knows and a crawl always does, because it
-  arrived from that employer's own site.
+- **Lever.** The file `candidates_lever.json` from the Common Crawl sweep has **zero tokens**. This is not a tuning issue. Common Crawl hardly indexes `jobs.lever.co` at all.
+- **Embeds.** If an employer puts their job board in an iframe (`boards.greenhouse.io/embed/job_board/js?for=<token>`), it does not create a crawlable ATS URL. The token only exists inside their HTML in a query string. The CC-index regex sees `embed` in the path and ignores the real token.
+- **Two-part identities.** Workday is `tenant.wdN/Site`, Oracle is `host/CX_1`, and Eightfold is `tenant/domain`. None of these are path segments. A URL index cannot extract them. `adapters/workday.py` already stated these "come from careers-page crawling, never from slug guessing." This is that crawling. Eightfold is the clearest example: its identity requires the *employer's* domain. A URL index never knows this, but a crawl always does because the crawler started at the employer's site.
 
 ```bash
 uv run python scripts/crawl_careers.py crawl --seeds unresolved --max-pages 400
@@ -509,55 +490,44 @@ uv run python scripts/crawl_careers.py report   # -> data/discovery/crawled_<ven
 uv run python scripts/discover_boards.py validate --vendor lever   # reads both sources
 ```
 
-`report` writes `crawled_<vendor>.json` in exactly the shape `harvest` produces,
-and `validate` reads the **union** of the two. Deliberately separate files: one
-sweep is 6,832 CC tokens and the other a few hundred crawled ones, and neither
-may clobber the other. Nothing here touches `data/discovered_boards.csv`, so the
-append-only adoption rule is protected by construction.
+`report` creates `crawled_<vendor>.json`. This file looks exactly like the one `harvest` makes.
+
+`validate` reads both files together. The files are kept separate. One file has 6,832 CC tokens. The other has a few hundred crawled items. Neither file will overwrite the other.
+
+Nothing here changes `data/discovered_boards.csv`. This keeps the "append-only" rule safe.
 
 ### What makes it finite
 
-A general crawler has no natural stopping point. This one is *focused* in
-Chakrabarti's sense, and three rules bound it:
+A general crawler does not stop on its own. This one is *focused* in Chakrabarti's sense, and it follows three rules:
 
-1. **It starts from employers we already know** — the `domain` and `careers_url`
-   columns Step 0 already collected. `--seeds unresolved` seeds only the 27 rows
-   the audit never resolved, which is where the value is.
-2. **The frontier is a priority queue, not a queue.** `score_link` decides which
-   of a homepage's 300 links is worth one of a finite number of requests:
-   `/about/careers` scores 195, `/blog/2024/why-we-are-hiring` scores 0 despite
-   the word "hiring" in it, and off-site links score 0 because the fingerprints
-   already read them out of the HTML without a request.
-3. **A host is done the moment a fingerprint hits.** One token per employer is
-   the goal, not a site map. This is the rule that turns "crawl the web" into
-   "163 requests for 27 employers".
+1. **It starts with employers we already know** — the `domain` and `careers_url` columns from Step 0. The `--seeds unresolved` seeds only include the 27 rows the audit did not fix. This is where the real value is.
+2. **The frontier is a priority queue, not a simple queue.** `score_link` decides which of a homepage's 300 links to visit. We have a limited number of requests. For example:
+   * `/about/careers` scores 195.
+   * `/blog/2024/why-we-are-hiring` scores 0, even though it has the word "hiring."
+   * Off-site links score 0 because the fingerprints already read them from the HTML without needing a new request.
+3. **A host is finished as soon as a fingerprint hits.** The goal is one token per employer, not a full site map. This rule changes "crawl the web" into "163 requests for 27 employers."
 
-The unit of discovery is still a board, never a job. Crawling job links would
-rebuild a job board — duplicates, dead links, no closure detection — which is
-the thing this project exists not to be. The crawler finds the door; the
-adapters walk through it.
+The unit of discovery is a board, not a job. Crawling job links would just rebuild a job board. It would include duplicates, dead links, and no closure detection. This project is not meant to do that. The crawler finds the door; the adapters walk through it.
 
-When a homepage yields no careers-ish link at all (a JS shell), it falls back to
-the conventional paths (`/careers`, `/join-us`, …) and to `sitemap.xml`, which
-robots.txt often declares. Conventions, not guesses at private URLs.
+When a homepage does not have a careers link, the system looks at common paths like `/careers` and `/join-us`. It also checks the `sitemap.xml` file listed in `robots.txt`. The system uses standard paths instead of guessing private URLs.
 
 ### Politeness is structural, not a flag
 
-robots.txt is fetched and obeyed per host including `Crawl-delay`; requests to
-one host are serialised behind a minimum delay (`--concurrency` is across
-*different* hosts); the User-Agent names the project; responses are
-content-type filtered and byte-capped at 2 MB, streamed so an unexpectedly
-enormous body is truncated rather than downloaded. `--max-pages` is a hard stop
-and defaults low. In the run below, robots.txt disallowed one path and the
-crawler simply did not fetch it. Same line `discover_boards.py` draws: public
-pages, declared identity, **no proxies and no evasion, ever**.
+The crawler follows `robots.txt` rules for each host. It respects the `Crawl-delay` setting. Requests to a single host happen one after another with a minimum delay. The `--concurrency` setting only applies to different hosts.
 
-Crawler state is resumable — the seen-set is the part that matters, because a
-resumed crawl that re-fetches what it already has is rude twice over. robots.txt
-is deliberately *not* persisted: it can change, and a fresh process re-reading
-it is the correct behaviour. `--resume` restores per-host page counts too, so it
-picks up unexplored *frontier*, not unexplored hosts: a host that already spent
-its `--max-per-host` budget stays spent. Raise the budget to go deeper on one.
+The User-Agent identifies the project. The crawler filters results by content type. It limits downloads to 2 MB. If a file is larger than 2 MB, the crawler stops downloading it. The `--max-pages` setting stops the crawler, and it starts with a low default.
+
+In the example below, the `robots.txt` file blocked one path. The crawler did not visit that path. The `discover_boards.py` script:
+*   Finds public pages.
+*   Uses the declared identity.
+*   Never uses proxies.
+*   Never uses evasion techniques.
+
+The crawler can resume its work. The "seen-set" is the important part because you should not download the same page twice.
+
+The `robots.txt` file is not saved. This is on purpose because the file can change. A new process should always read the latest version.
+
+The `--resume` flag restores the count of pages per host. This means it looks for unexplored pages in the "frontier," not unexplored hosts. If a host has already hit the `--max-per-host` limit, it stays blocked. To crawl more on one host, you must increase the budget.
 
 ### First live run: the employers Step 0 could never resolve
 
@@ -574,59 +544,49 @@ its `--max-per-host` budget stays spent. Raise the budget to go deeper on one.
 | Marketplacer | bamboohr | `marketplacer` | no adapter |
 | National Australia Bank | eightfold | `nab/nab.com.au` | real board, **0 AU roles** |
 
-Both Oracle tokens went straight through the existing adapter — 76 Australian
-roles from two employers Step 0 had left blank, on hosts (`ejjl`,
-`fa-evew-saasfaprod1`) nobody could have guessed.
+Both Oracle tokens passed through the current adapter. Step 0 left 76 Australian roles from two employers blank. These were on hosts (`ejjl`, `fa-evew-saasfaprod1`) that were not obvious.
 
-**NAB is the instructive row, and it is a warning about this table.** The crawl
-found a genuine Eightfold tenant on `careers.nab.com.au`, and it is the wrong
-board: that tenant is the India delivery centre, 0 of 267 roles in Australia.
-NAB's Australian roles sit on a Clinch site behind an AWS WAF challenge, which
-is where this project stops by its own rule. A found token is a *proposal* —
-`validate` drops boards with no AU roles precisely so a confident fingerprint
-cannot become a permanently wrong board in the seed list.
+**NAB is the instructive row, and it is a warning about this table.** The crawl found a real Eightfold tenant on `careers.nab.com.au`, but it is the wrong board: that tenant is the India delivery center, which has 0 of 267 roles in Australia.
 
-So of eight findings: two are coverage, five are intelligence about which suite
-an employer runs (the precondition for ever writing that adapter), and one is a
-real board that must not be adopted. The crawler cannot tell those apart, and
-does not try to.
+NAB's Australian roles are on a Clinch site behind an AWS WAF challenge. This project stops there by its own rule. A found token is a *proposal* — `validate` removes boards with no AU roles. This ensures a confident fingerprint does not become a permanently wrong board in the seed list.
 
-And on eight Lever/Greenhouse employers, the crawl produced `Zeller`,
-`immutable`, `q-ctrl` and `eucalyptus` — **`data/discovery/validated_lever.json`
-now exists**, and Common Crawl had produced zero Lever tokens to validate.
-`Zeller` came back with its capital Z intact, which is the whole ballgame:
-`jobs.lever.co/Zeller` resolves and `/zeller` 404s.
+There are eight findings in total:
+* Two are about coverage.
+* Five are about which software suite an employer uses. This is the requirement for writing an adapter.
+* One is a real board that should not be used.
+
+The crawler cannot tell these apart, and it does not try to.
+
+On eight Lever/Greenhouse employers, the crawl found `Zeller`, `immutable`, `q-ctrl`, and `eucalyptus`.
+
+**`data/discovery/validated_lever.json` now exists.**
+
+Common Crawl found zero Lever tokens to check.
+
+`Zeller` kept its capital Z. This is the main point:
+`jobs.lever.co/Zeller` works, but `/zeller` gives a 404 error.
 
 ### False positives are still validation's job, not the crawler's
 
-KPMG's careers page yielded `smartrecruiters:ni`, which answers
-`200 {"totalFound": 0}` — the vendor's documented trap. `validate` drops boards
-with no jobs, so it never reached the CSV. The crawler's job is to *propose*;
-only a live vendor feed gets to decide a board is real. `plausible_token` is a
-junk filter, not a judgement — it exists to avoid spending a request on
-`bundle.js`, and it keeps its own blocklist separate from
-`discover_boards.py`'s, because HTML junk (asset paths, framework chunks) and
-URL-index junk are different populations.
+KPMG's careers page led to `smartrecruiters:ni`. This returned `200 {"totalFound": 0}`, which is a known trap from the vendor. The `validate` function removes boards with no jobs, so this one never made it to the CSV. The crawler's job is only to suggest boards; a live vendor feed decides if a board is real. `plausible_token` is a filter to avoid wasting requests on `bundle.js`. It keeps its blocklist separate from `discover_boards.py` because HTML junk (like asset paths) and URL-index junk are different types of data.
 
-Findings are keyed on **(vendor, token, seed)**, not on the token alone. `ni` is
-the reason: two employers resolving to one token is either the same employer
-reached under two hosts, or a careers page pointing at a board that isn't
-theirs, and collapsing the rows would make those indistinguishable. The cost is
-that `crawled_<vendor>.json` accumulates monotonically — a junk token proposed
-once costs one validation request on every future sweep. `candidates_*.json`
-from Common Crawl has had the same property since day one; if either file ever
-gets expensive, prune against `validated_*.json`.
+Findings are identified by a combination of **(vendor, token, seed)**. They are not identified by the token alone.
+
+The reason is `ni`:
+* Two employers might share one token.
+* This happens if the same employer is found on two different hosts.
+* It also happens if a careers page points to a job board that does not belong to them.
+* If we group these rows together, we cannot tell the difference between these cases.
+
+The downside is that `crawled_<vendor>.json` grows constantly. A bad token that was proposed once will cost one validation request during every future sweep.
+
+`candidates_*.json` from Common Crawl has always worked this way. If either file becomes too expensive, remove the data using `validated_*.json`.
 
 ## Board discovery, part three: the crawl that doesn't stop
 
-Parts one and two both terminate, and both terminate for the same reason: they
-are seeded from a list of employers somebody wrote down. Common Crawl sweeps
-the ATS domains we name; the focused crawler visits the employers Step 0
-audited. Coverage is therefore capped by a CSV, and "find more employers" was
-never a matter of running either of them harder.
+Parts one and two both end for the same reason: they use a list of employers that someone wrote down. Common Crawl scans the ATS domains we named. The focused crawler visits the employers audited in Step 0. Because of this, the coverage is limited by a CSV file. "Find more employers" was not something that could be fixed by running either tool harder.
 
-`scripts/crawl_forever.py` removes the cap. It runs laps until something kills
-it, and the queue lives in Postgres rather than in the process:
+`scripts/crawl_forever.py` removes the limit. It runs loops until it stops. The queue stays in Postgres instead of in the process:
 
 ```bash
 uv run python scripts/crawl_forever.py --seed au,global,audit --laps 3   # try it
@@ -635,106 +595,70 @@ uv run python scripts/crawl_forever.py status
 uv run python scripts/crawl_forever.py adopt      # hand boards to ingestion
 ```
 
-`.github/workflows/crawl.yml` runs it four times a day for 45 minutes. "Infinite"
-and "a six-hour job ceiling" are not in tension once the frontier is a table:
-each run claims work, crawls, writes back, exits, and the next run resumes
-exactly where it stopped. The crawl is continuous even though no process is.
+`.github/workflows/crawl.yml` runs four times a day for 45 minutes. "Infinite" and "a six-hour job ceiling" do not conflict when the frontier is a table. Each run takes work, crawls, saves the results, and stops. The next run starts exactly where the last one left off. The crawl stays continuous even though no single process runs forever.
 
 ### The frontier had to become a table
 
-`crawl_state.json` held the seen-set, the queue and the findings, rewritten
-whole at every checkpoint. That is right for a few hundred kilobytes and wrong
-for a queue that grows forever — three problems, all the same problem: the
-state was a document when it wanted to be a table. `src/muster/frontier.py`
-moves it, and the properties fall out of the schema:
+`crawl_state.json` stored the seen-set, the queue, and the findings. It was rewritten completely at every checkpoint. This works for a few hundred kilobytes, but it is bad for a queue that grows forever. There are three problems, but they all stem from the same issue: the state was treated as a document instead of a table. `src/muster/frontier.py` moves it, and the properties fall out of the schema:
 
-- **"Seen" becomes "a row exists."** Deduplication is the `url` primary key and
-  `ON CONFLICT DO NOTHING`, so a page crawled six restarts ago is never fetched
-  twice, and the seen-set costs no memory.
-- **Checkpointing becomes continuous.** Rows are marked done as they are
-  crawled, so a kill loses only what was in flight.
-- **Per-host budgets survive restarts.** `crawl_hosts.pages` is a lifetime
-  count. Without it `--max-per-host` silently degrades from a budget into a
-  per-lap rate limit, and the daemon crawls the same site twelve pages at a
-  time forever.
-- **Claims are reclaimable.** A clean stop releases them; a `SIGKILL` leaves
-  them, and `requeue_stale_claims` picks them up after six hours. Without that
-  every hard stop strands work permanently.
+- **"Seen" means a row exists.** The `url` is the primary key. We use `ON CONFLICT DO NOTHING`. This means a page crawled six restarts ago is never fetched again. This way, the "seen" set uses no memory.
+- **Checkpointing is continuous.** Rows are marked as done as they are crawled. If the process is killed, you only lose the work that was currently in progress.
+- **Per-host budgets survive restarts.** `crawl_hosts.pages` tracks the total count over time. Without this, `--max-per-host` would change from a total budget to a per-lap limit. The daemon would then crawl the same site twelve pages at a time forever.
+- **Claims can be reclaimed.** A clean stop releases them. A `SIGKILL` leaves them behind. The `requeue_stale_claims` task picks them up after six hours. Without this, every hard stop would leave work stranded forever.
 
 ### What makes it unbounded, and what still bounds it
 
-Exactly one rule is lifted. `score_link` returns 0 for off-site links, which is
-correct per-employer and is what caps the whole crawl; `--expand` adds a
-narrow exception for **employer homepages linked from directory pages** — the
-"our customers", "portfolio" and "member" grids that are the densest lists of
-company domains on the open web. A harvested domain becomes a new seed at depth
-0 and the ordinary focused rules apply again from there.
+Only one rule is changed. `score_link` returns 0 for links to other websites. This follows the employer's rules and limits the crawl.
 
-Everything else still bounds it, and the important one is unchanged: **a host
-is done the moment a fingerprint hits**, now persisted so a restart cannot
-forget it. The crawl is unbounded in employers and strictly bounded per
-employer, which is the only shape in which "never stops" is also "never rude".
-`seedable_domain` rejects same-site links, article-shaped URLs, and the social,
-CDN, ATS and government hosts that appear in every footer on the web.
+The `--expand` flag adds a small exception: **employer homepages linked from directory pages**. This includes "our customers", "portfolio", and "member" grids. These grids have many company websites.
 
-It is also unhurried on purpose — 25 pages a lap with 30 seconds between laps
-is roughly three pages a minute spread over hundreds of hosts, underneath which
-every politeness rule in `crawl.py` still applies per host (robots.txt with
-`Crawl-delay`, one request at a time, a lifetime cap of 12 pages per host).
-Discovery is a background process measured in weeks.
+When a new domain is found, it becomes a new starting point (depth 0). The normal rules apply again from that point.
 
-The scheduled run takes `--minutes`, not `--laps`. How long a lap takes is
-emergent — how many claimed URLs share a host, what `Crawl-delay` those hosts
-declare, how many time out — so converting a time budget into a lap count in
-advance is guesswork. The first version of `crawl.yml` guessed a lap at 15
-minutes; measured, it is about 10 seconds.
+Everything else stays the same. The most important rule is still the same: **a host is finished as soon as a fingerprint is found**. This is now saved so a restart won't forget it. The crawl has no limit on the number of employers, but it has a strict limit for each employer. This is the only way to keep going forever without being rude. `seedable_domain` blocks same-site links, article URLs, and the social, CDN, ATS, and government sites that appear in every footer on the web.
+
+It is slow on purpose. It crawls 25 pages per lap with 30 seconds between laps. This is about three pages per minute across many hosts.
+
+The rules in `crawl.py` still apply to every host:
+*   `robots.txt` with `Crawl-delay`
+*   One request at a time
+*   A limit of 12 pages per host
+
+Finding new pages is a background process that takes weeks.
+
+The scheduled run uses `--minutes` instead of `--laps`.
+
+The time it takes for one lap depends on several things:
+* How many URLs belong to the same host.
+* The `Crawl-delay` set by those hosts.
+* How many requests time out.
+
+Because of this, you cannot accurately guess how many laps fit into a time limit. The first version of `crawl.yml` guessed 15 minutes for a lap, but it actually took about 10 seconds.
 
 ### Adoption is the hinge, and it has a sharp edge
 
-`crawl_findings.adopted_at` is what makes the pipeline continuous rather than a
-report someone pastes into a CSV. `adopt` writes the ingestable findings into
-`data/discovered_boards.csv` — the file `muster.run` reads — and then marks
-them adopted.
+`crawl_findings.adopted_at` makes the pipeline run continuously. It is not just a report someone pastes into a CSV. The `adopt` command writes the findings into `data/discovered_boards.csv`. This is the file that `muster.run` reads. Then, it marks those findings as adopted.
 
-Those two writes go to different places — the flag to Postgres, the board to a
-file that has to be committed and pushed — and anything in between (a rebase
-conflict, a protected branch, a dead runner) would leave the flag saying
-"handled" and the file not listing the board. Gated on the flag, that board
-would never be offered again and never be swept.
+These two writes go to different places. The flag goes to Postgres. The board goes to a file that must be committed and pushed. Anything that happens in between—like a rebase conflict, a protected branch, or a dead runner—could cause a problem. The flag would say "handled," but the file would not list the board. Because of the flag, that board would never be shown again and would never be swept.
 
-So **the flag is not the gate**. `adopt` offers whatever the CSV does not
-already list, which makes it idempotent and self-healing: a failed push just
-means the same boards come round next run. `adopted_at` is what it should
-always have been — a record of when a board first landed. This is also why
-adoption runs in `crawl.yml`, where it commits the file, and not in
-`sweep.yml`, whose runner throws its checkout away.
+**The flag is not the gate.** The `adopt` command adds whatever is missing from the CSV. This makes it safe to run multiple times: if a push fails, the same boards will be processed again next time. `adopted_at` shows when a board was first added. This is why adoption runs in `crawl.yml`. It saves the file there. It does not run in `sweep.yml` because that runner deletes the checkout.
 
-The CSV stays in git deliberately: it is the append-only record that protects
-closure detection, and a record with no version history is one bad run away
-from silently un-adopting boards whose jobs would then sit open forever.
+The CSV file stays in git on purpose. It acts as a permanent record to track closed jobs. If the file had no version history, one mistake could cause the system to forget which boards were finished. This would leave those jobs open forever.
 
 ### Workday, which is where the large employers actually are
 
-The first probe of this work crawled five named companies and resolved
-Accenture to `workday:accenture.wd103/AccentureCareers` in one hop — a vendor
-with an adapter already written. That prompted adding `*.myworkdayjobs.com` to
-the Common Crawl `SOURCES`, which had covered only the four single-segment
-vendors because the composite `tenant.wdN/Site` identity did not fit the shape.
+The first test of this work looked at five named companies. It found Accenture in one step. It linked it to `workday:accenture.wd103/AccentureCareers`. This was a vendor that already had an adapter.
 
-Validating it needed its own path, and finding out why is the interesting part.
-The obvious approach — pull a page of postings and test their locations —
-**rejects exactly the boards worth having**. Accenture's board is 2,000 jobs, an
-unfiltered sample of 20 is whatever Workday sorts first, and on some tenants the
-listing endpoint returns `locationsText` empty, so every job in the sample parses
-as location-unknown and the board scores zero Australian roles. It has 372.
+Because of this, the team added `*.myworkdayjobs.com` to the Common Crawl `SOURCES`. Before this, the system only covered four single-segment vendors. This was because the `tenant.wdN/Site` identity did not match the expected format.
 
-So `workday_row` asks the search endpoint instead of counting a sample:
-`searchText` is tenant-independent (unlike the location facet GUIDs
-`adapters/workday.py` documents as useless across tenants), and the `total` it
-returns is a whole-board answer. It is a keyword match rather than a location
-filter, so the count is an upper bound — which is the right direction to be
-loose in, because this decides whether a board is worth *fetching* and the
-adapter's own location parsing decides what reaches the index.
+Validating this required a new method. Finding the reason why is the interesting part.
+
+The easy way — grabbing a page of posts and checking their locations — **ignores the boards that actually matter**. Accenture's board has 2,000 jobs. A sample of 20 is just whatever Workday shows first. On some systems, the listing endpoint returns an empty `locationsText` field. This means every job in that sample shows as "location-unknown." The board scores zero Australian roles, even though it has 372.
+
+`workday_row` uses the search endpoint instead of counting a sample.
+
+`searchText` works for all tenants. This is different from the location facet GUIDs, which `adapters/workday.py` says do not work across tenants.
+
+The `total` returned by the search is for the whole board. It uses a keyword match instead of a location filter. This means the count is a maximum limit. This is the correct way to be broad because this number decides if a board should be fetched. The adapter's own location parsing then decides what gets into the index.
 
 | board | jobs | AU |
 |---|---|---|
@@ -742,237 +666,129 @@ adapter's own location parsing decides what reaches the index.
 | `accenture.wd103/AccentureCareers` | 2,000 | 372 |
 | `telstra.wd3/Telstra_Careers` | 220 | 220 |
 
-A full sweep of `*.myworkdayjobs.com` is only five index pages, and it is by
-some distance the most productive thing in this repo: **4,894 raw tokens →
-3,040 after filtering → 720 validated → 504 distinct → adopted**, against the
-12 Workday boards the project had before. `data/discovered_boards.csv` went
-from 317 boards to 838.
+A full scan of `*.myworkdayjobs.com` only has five index pages. This was the most useful task in this repository. The results were: **4,894 raw tokens → 3,040 after filtering → 720 validated → 504 distinct → adopted**. This is much better than the 12 Workday boards the project had before. The file `data/discovered_boards.csv` grew from 317 boards to 838.
 
-Two junk problems had to be solved to get there, and both are the kind that
-look like tuning and are not.
+Two junk problems had to be solved to get there. Both problems looked like tuning issues, but they were not.
 
-**A third of the raw tokens were `robots`.** A URL-index sweep meets every
-host's `robots.txt` long before it meets any board, so 1,611 of 4,894 tokens
-were `tenant.wdN/robots` — each costing two validation requests to disprove.
-The obvious fix is to run the site path through `SKIP_TOKENS`, and it is wrong:
-that list rejects `careers` and `jobs`, which are among the commonest *real*
-Workday site paths — 152 `/careers` boards in this sweep alone. So
-`plausible_token` rejects only what cannot be a site (root files like
-`robots`/`llms`/`sitemap`, bare locale segments, pure digits) and leaves
-everything else to validation.
+**One-third of the raw tokens were `robots`.** A URL-index sweep finds every host's `robots.txt` before it finds any board. This means 1,611 out of 4,894 tokens were `tenant.wdN/robots`. Each one required two validation requests to disprove.
 
-**Workday resolves site paths case-insensitively**, which nothing in the
-project knew. 216 of the 720 validated boards (30%) were case variants of
-another — `cba.wd3/CommBank_Careers` and `cba.wd3/commbank_careers` both
-answering with the same 220 jobs. Probing directly settles it:
-`cba.wd3/cOmMbAnK_cArEeRs` returns that board and `cba.wd3/NotARealSite` 404s.
-Left unhandled, 30% of Workday employers would be fetched twice on every sweep
-forever.
+The easy fix is to add the site path to `SKIP_TOKENS`, but that is wrong. That list rejects `careers` and `jobs`. Those are actually some of the most common real Workday site paths. There were 152 `/careers` boards in this sweep alone.
 
-That fact had three separate copies of `CASE_INSENSITIVE = {"greenhouse",
-"ashby", "smartrecruiters"}` to go stale in, so it now lives once in
-`crawl.CASE_INSENSITIVE` and the readers import it. **Lever stays out of that
-set**: `jobs.lever.co/Zeller` resolves and `/zeller` 404s, so folding case there
-drops real boards — which `crawl_forever.py adopt` was doing, having lowercased
-every vendor's token.
+Instead, `plausible_token` only rejects things that cannot be a site (like `robots`, `llms`, `sitemap`, lone language codes, or plain numbers). Everything else goes to validation.
+
+**Workday site paths are not case-sensitive**, which was not known before. 216 out of 720 validated boards (30%) were just different versions of the same site. For example, `cba.wd3/CommBank_Careers` and `cba.wd3/commbank_careers` both show the same 220 jobs. Testing shows that `cba.wd3/cOmMbAnK_cArEeRs` still shows that board, while `cba.wd3/NotARealSite` gives a 404 error. If this is not fixed, 30% of Workday employers will be fetched twice every time the system runs.
+
+That fact had three different copies of `CASE_INSENSITIVE = {"greenhouse", "ashby", "smartrecruiters"}`. Now, it only exists once in `crawl.CASE_INSENSITIVE`. Readers import it from there.
+
+**Lever is not in that set**: `jobs.lever.co/Zeller` works, but `/zeller` gives a 404 error. If we ignore the case, we lose real boards. The `crawl_forever.py adopt` script did this because it turned every vendor's token into lowercase.
 
 ### The schedule, and the two different limits that shaped it
 
-The sweep runs every six hours and the discovery crawl twice a day. How it got
-there is a small lesson in which constraint you are actually optimising
-against, because the answer changed three times.
+The sweep runs every six hours. The discovery crawl runs twice a day. How this was decided is a small lesson in what you are trying to optimize. The answer changed three times.
 
-**First constraint: money.** The repo was private, so Actions minutes were
-metered — 3,000 a month on the plan the GitHub Student pack grants. A nightly
-sweep of 450 boards was ~5,700 of them and the crawler as first written (three
-45-minute runs a day) another ~4,050: roughly $54 a month, two thirds of it
-spent on a crawler whose own documentation says it does not need to hurry.
+**First constraint: money.** The repository was private, so GitHub Actions minutes were charged. The GitHub Student pack allows 3,000 minutes per month. A nightly sweep of 450 boards took about 5,700 minutes. The crawler, as first written, took three 45-minute runs a day, which was about 4,050 minutes. This cost roughly $54 a month. Two thirds of that was spent on a crawler that its own documentation says does not need to be fast.
 
-That forced a good change rather than merely a cheap one, because the waste was
-real. Of 866 boards, 190 have ever posted an Australian *data* role; 54 more
-are large Australian employers with no data opening right now; the remaining
-640 hold 21% of the Australian roles and not one data role between them.
-Fetching all three groups on one clock is what made "more often" look
-unaffordable.
+This forced a meaningful change instead of just a cheap one because the waste was real. Out of 866 boards, 190 have ever posted an Australian *data* role. Another 54 are large Australian employers with no data jobs right now. The remaining 640 hold 21% of Australian roles but have zero data roles. Trying to get all three groups at once made "more often" seem too expensive.
 
-So boards carry a target interval by tier, and `stalest` ranks by how overdue
-each board is against **its own** interval rather than by raw age:
+Boards have a target interval for each tier. The `stalest` command ranks boards by how late they are compared to their own specific interval. It does not rank them by how old they are in total.
 
 | tier | definition | interval | boards |
 |---|---|---|---|
 | hot | has posted an AU data role | 8h | 190 |
-| warm | ≥25 AU roles, no data role | 24h | 54 |
+| warm | has 25 or more AU roles but no data role | 24h | 54 |
 | cold | everything else | 96h | 640 |
 
-`hot` is defined by *relevance*, not volume — a board with three roles this
-index cares about outranks one with three hundred it does not. That ordering is
-the whole mechanism: ranked by age, fetching the hot tier four times a day
-means fetching the tail four times a day too, and six runs cost six nightlies.
-Ranked by overdue-ness a cold board simply is not eligible in between, so the
-extra runs cost about what the hot tier costs. A board that is not yet due is
-skipped even when budget remains, which is why `--budget` stopped being a
-tuning knob and became a generous safety cap. The knobs are `--interval-hot`,
-`--interval-warm` and `--interval-cold`.
+`hot` is based on *relevance*, not how much content there is. A board with three important roles ranks higher than one with three hundred unimportant ones. This is how the system works:
 
-**Second constraint: politeness.** The repo is public now, so minutes are free
-— and the intervals above are still deliberate, because the limit that always
-mattered was never the bill. **These are other people's servers.** 6/24/72 came to ~1,030 board-fetches a day, on the order of 15-20k HTTP
-requests spread over seven vendors and twenty-four hours: a handful per minute
-per vendor, which is a well-behaved client. Ten times that would not be, and no
-amount of free runner time would make it so. Free minutes changed how often
-this runs; they did not change what it is allowed to do.
+*   **Ranked by age:** The hot tier is fetched four times a day. This means the "tail" (lesser items) is also fetched four times a day. Six runs cost six nightlies.
+*   **Ranked by overdue-ness:** A cold board is not eligible between runs. The extra runs cost about the same as the hot tier.
 
-The sweep runs *more often than the shortest interval* on purpose. Four runs a
-day against an 8-hour hot interval decouples "when a board becomes due" from
-"when a run happens", so a board falling due at 06:00 waits at most six hours
-rather than until tomorrow. The crawl's two slots are placed in the gaps
-between the four sweeps: they share a `muster-pipeline` concurrency group,
-and GitHub keeps only ONE pending run per group and discards an older pending
-one when a newer arrives — so a slot that habitually collided would not queue,
-it would silently skip.
+A board that is not due yet is skipped, even if there is still budget left. This is why `--budget` is now a safety cap rather than a way to tune the system. The actual settings are `--interval-hot`, `--interval-warm`, and `--interval-cold`.
 
-**Third constraint: what the sweep can actually finish.** Both arguments above
-reason about how much traffic it is decent to *send*. Neither asks whether the
-sweep can send it, and for a year it could not. Every scheduled run ended with
-a line nobody read:
+**Second constraint: politeness.** The repo is public now, so the minutes are free.
+
+The intervals above are still intentional. The limit that matters is not the bill. **These are other people's servers.** 6/24/72 reached about 1,030 board-fetches a day. This is about 15-20k HTTP requests spread over seven vendors and twenty-four hours. That is only a few requests per minute per vendor. This is a well-behaved client. Ten times that amount would not be. Free runner time does not change what the script is allowed to do.
+
+The sweep runs more often than the shortest interval on purpose. We run it four times a day even though the hot interval is 8 hours. This separates "when a board is due" from "when a run happens." A board that becomes due at 06:00 will wait at most six hours instead of waiting until the next day.
+
+The crawl has two slots. These are placed in the gaps between the four sweeps. They share a `muster-pipeline` concurrency group. GitHub only keeps ONE pending run per group. If a new run arrives, GitHub drops the older pending one. This means a slot that usually hits a conflict will not queue; it will skip instead.
+
+**Third constraint: what the sweep can actually finish.** Both arguments above talk about how much traffic is okay to *send*. Neither asks if the sweep can actually send it. For a year, it could not. Every scheduled run ended with a line nobody read:
 
 ```
 budget 400: 400 due now (0 never attempted), 509 not due or held over
 183/183 boards ok in 17696s, 217 skipped (out of time)
 ```
 
-183 boards in 4h55m, four runs a day, is about **730 board-fetches a day of
-capacity against 1,030 of demand** — a 40% shortfall, every run, silently. The
-skipped boards were safe (they stay due and sort first next time) which is
-exactly why it went unnoticed: nothing failed, no count was wrong, the tail
-simply never came round. `stalest` re-ranked the same starved cold boards
-behind the same hot tier indefinitely.
+183 boards were processed in 4 hours and 55 minutes. With four runs a day, the system can only handle about 730 board-fetches daily. This is a 40% shortfall compared to the 1,030 boards demanded. This happened every run without being noticed.
 
-The cost centre is Workday, and it is not tunable: `PAGE = 20` is a hard vendor
-cap — ask for 50 and the body comes back empty — so a 2,000-job tenant is 100
-sequential requests before a single Australian role is classified. 526 of the
-909 boards are Workday.
+The skipped boards were safe because they stayed in the queue to be sorted next time. This is why no one noticed: nothing broke and the counts were correct. The "tail" of the queue simply never moved. The `stalest` command kept the same old boards behind the new, "hot" items forever.
 
-So the intervals moved to 8/24/96, which asks for ~784 a day. That is close
-enough to capacity for the overdue-ranking to absorb the remainder rather than
-re-skip a fixed tail, and it is strictly *less* traffic than before — the
-politeness argument only gets stronger. The schedule moved with it, because
-6 four-hourly slots against a 5-hour job was the same kind of fiction: GitHub
-was discarding two pending sweeps a day and cancelling half the crawls, and
-the workflow comments confidently described 75-minute runs. Four sweeps and
-two crawls is what fits in a day.
+The cost centre is Workday. You cannot change it. The `PAGE = 20` limit is a hard rule from the vendor. If you ask for 50, the result is empty. This means a tenant with 2,000 jobs needs 100 requests in a row before one Australian role is sorted. 526 out of the 909 boards are Workday.
 
-The lesson is narrow and worth keeping: a rate limit you set against an
-external constraint still has to be checked against your own throughput.
-Politeness told us what we were *allowed* to fetch. It could not tell us what
-we were *managing* to fetch, and the gap between those two numbers hid for as
-long as it did because every individual run looked like a success.
+The intervals changed to 8/24/96. This requires about 784 per day. This amount is close to the capacity limit. Because of this, the overdue-ranking system can handle the extra work instead of skipping a fixed tail. This is actually less traffic than before. This makes the "politeness" argument even stronger.
 
-One casualty is worth naming. `runs.STALE_HOURS` is a single threshold compiled
-into SQL, and boards no longer share one interval, so it sits above the cold
-tier (120h) and means only "nothing has fetched this in five days." It will not
-catch a hot board that died yesterday. The signals that do catch that —
-`last_run` and the `failed`/`incomplete` counts — are tier-independent, so the
-runs page still answers "is the pipeline alive". Comparing per board needs each
-board's target interval recorded on its `board_runs` row.
+The schedule changed to match this. Before, having 6 four-hourly slots for a 5-hour job was not realistic. GitHub was dropping two pending sweeps every day and canceling half of the crawls. However, the workflow comments still claimed there were 75-minute runs. Four sweeps and two crawls are what actually fit in one day.
+
+The lesson is simple and important: a rate limit you set based on an outside rule must still be checked against your own system's speed.
+
+Politeness told us what we were *allowed* to get. It did not tell us what we were *actually* getting. The gap between those two numbers stayed hidden because every single run looked like a success.
+
+One casualty is worth naming. `runs.STALE_HOURS` is a single SQL threshold. Because boards no longer share one interval, this value sits above the cold tier (120h). It only means "nothing has fetched this in five days." It will not catch a hot board that died yesterday.
+
+The signals that do catch that—`last_run` and the `failed`/`incomplete` counts—work across all tiers. Therefore, the runs page still answers "is the pipeline alive." To compare per board, each board's target interval must be recorded on its `board_runs` row.
 
 ### What re-validation was worth: nothing, and that is the useful part
 
-The 6,826 tokens Common Crawl had already harvested were validated once, in
-September. The obvious hypothesis is that this is a stale snapshot — a board
-with no Australian roles that day may have them now — so the whole set was
-re-validated against live feeds.
+Common Crawl had already collected 6,826 tokens. These were checked once in September. The likely reason for the update is that the old data was out of date. A board might not have had any Australian roles back then, but it might have them now. Therefore, the entire set was checked again against live feeds.
 
-It returned **326 boards against the previous ~325**. One net board.
+It returned **326 boards compared to the previous ~325**. That is one extra board.
 
-So the AU gate is not a stale snapshot, it is a real ceiling: roughly 95% of
-Greenhouse and Ashby boards genuinely have no Australian roles at any given
-moment, and re-running validation recovers nothing. That kills the
-cheapest-looking route to wider coverage and is the reason Workday — a vendor
-whose employers are large enough to have an Australian office at all — is where
-the remaining upside sits.
+The AU gate is not a temporary problem. It is a real limit. About 95% of Greenhouse and Ashby boards do not have any Australian roles right now. Running validation again does not find any new roles.
+
+This removes the easiest way to get more coverage. Because of this, Workday is the best remaining option for growth. Workday is a vendor large enough to have an office in Australia.
 
 ### The sweep budget, which had to be fixed first
 
-This was the blocker, not the crawler. `board_runs` put a full sweep at ~50
-seconds a board; at 357 boards against the workflow's 330-minute timeout there
-was room for about 30 more before the nightly started failing — and the failure
-mode is the worst one available. A sweep that times out partway through leaves
-boards it never reached looking exactly like boards whose jobs all closed at
-once, which is the single case `store.py` is built to refuse.
+The problem was not the crawler. `board_runs` took about 50 seconds to scan each board. With 357 boards and a 330-minute timeout, there was only room for about 30 more boards before the nightly job failed.
 
-`muster.run --budget N` rotates instead of truncating: sweep the N boards
-that went longest without a successful fetch, never-fetched ones first. What
-makes rotating safe where truncating is not is `store.reconcile` — it is only
-ever called for a board that was actually fetched, so a board left out of a
-pass keeps its rows and its `closed_at` values untouched. It goes **stale**,
-which `runs.summary` already counts and the runs page already shows, rather
-than wrong. Nothing is closed by not looking.
+The failure happened in the worst way possible. A sweep that times out halfway through makes some boards look like they were never reached. This is the specific case that `store.py` is designed to reject.
 
-The nightly now runs `--budget 450 --deadline 270`, and the second flag is the
-one that actually holds. **Boards are not interchangeable units of time.**
+`muster.run --budget N` rotates instead of truncating. It picks the N boards that have been without a successful fetch the longest. Boards that were never fetched are picked first.
 
-The numbers come from a stratified sample of the adopted Workday boards, and
-they corrected two assumptions written here earlier.
+Rotating is safe while truncating is not because of `store.reconcile`. This function only runs for boards that were actually fetched. A board left out of a pass keeps its rows and `closed_at` values. It becomes **stale**. The `runs.summary` and the runs page already count stale items. Nothing is closed just because it wasn't looked at.
 
-**Workday is not slower than the mean.** Most of its boards are cheaper than
-the 59s each that the pre-existing 357 measured — a 16-job board is 3.5s, a
-72-job board 8.6s.
+The nightly now uses `--budget 450 --deadline 270`. The second flag is the one that matters. **Boards are not the same as units of time.**
 
-**But per-job cost varies about fourfold between tenants, and not for any
-reason you can see from the board.** Three boards over 500 jobs came in at
-0.060, 0.097 and 0.241 seconds per job, and the ordering is the opposite of the
-obvious hypothesis: the *fastest* was the one with the most Australian roles
-(889 jobs, 58 AU) and the *slowest* the one with the fewest (517 jobs, 2 AU).
-It is tenant latency, not work done, so board size and AU count together do not
-predict duration.
+The numbers come from a stratified sample of the adopted Workday boards. They corrected two assumptions mentioned earlier.
 
-That is why `--budget` stays optimistic at 450 while `--deadline 270` does the
-actual bounding. The asymmetry favours it: on a fast night the budget is spent
-and more boards stay fresh; on a slow night the deadline stops the pass early
-and the boards it did not reach go stale, which is safe. A lower budget would
-cap the good nights and buy nothing on the bad ones. Sweeping all 866 boards
-would be somewhere near 8h against a 5.5h ceiling, so some limit is required
-regardless.
+**Workday is not slower than the average.** Most of its boards cost less than the 59 seconds each that the old 357 measured. A 16-job board takes 3.5s, and a 72-job board takes 8.6s.
 
-What *is* slow is a specific and rare shape, and the cost model only makes
-sense once you know why. `accenture.wd103/AccentureCareers` ran past twelve
-minutes where its 2,000 jobs predict about three. The reason is the same quirk
-that broke its validation: **its listing returns `locationsText` empty.**
-`maybe_australian` cannot rule anything out without a location, so the adapter
-fetches per-job detail for all 2,000 postings rather than the ~370 that are
-actually Australian. Sampling 30 adopted boards, 1 (3%) has blank locations, so
-this is roughly 15 boards of the 505 — rare enough not to reshape the budget,
-common enough to need the per-board timeout that bounds it.
+**But the cost per job changes by about four times between tenants. You cannot see any reason for this on the board.** Three boards with over 500 jobs each took 0.060, 0.097, and 0.241 seconds per job. The order is the opposite of what you might expect: the *fastest* board had the most Australian roles (889 jobs, 58 AU) and the *slowest* had the fewest (517 jobs, 2 AU). This is because of tenant latency, not the amount of work. Board size and AU count do not predict how long it takes.
 
-`--deadline` stops *starting* boards once the clock runs out, leaving an hour
-for the export and publish steps. It is safe for exactly the reason the
-rotation is: a board that was not fetched is never reconciled, so it goes stale
-rather than wrong. A 25-minute per-board timeout backs it up, because the
-deadline is checked before a board starts and never again — with
-`CONCURRENCY = 4`, four boards can begin a second before it and run past it
-unbounded, and httpx's 45s timeout is per *request*, not per board. A board cut
-off comes back `complete=False`, which `store.py` already refuses to close
-anything from.
+The `--budget` stays at 450 because it is optimistic. The `--deadline 270` is what actually limits the work. This setup works well: on fast nights, the budget is spent and more boards stay fresh. On slow nights, the deadline stops the process early. The boards that were not reached will go stale, which is safe. A lower budget would limit the good nights but would not help on the bad ones. Cleaning all 866 boards would take about 8 hours. Since there is a 5.5-hour limit, some limit is needed.
 
-**The order is by last attempt, not last success**, and getting that backwards
-is a starvation loop rather than an inefficiency. Rank on successful fetches
-and a board that never completes has no successful run, so it sorts ahead of
-every board that does, is picked first every night, spends its minutes, fails,
-and sorts first again tomorrow. A few boards like Accenture would permanently
-occupy the front of the budget while the boards that actually succeed rotate
-ever more slowly. Ranking on attempts sends a board that just cost us minutes
-to the back whether or not it worked, while a board nobody has *ever* tried
-still jumps the queue — which is what a newly adopted board needs.
+Slow performance happens in a specific and rare way. The cost model only makes sense if you understand the reason.
 
-One knock-on: at 866 boards and `--budget 450`, a board is fetched roughly
-every 1.9 days *by design*. So `runs.STALE_HOURS` went from 48 to 96 — at 48
-the runs page would report a large, permanently growing stale count for a
-pipeline working exactly as intended, which is how you train yourself to ignore
-the one number that says the schedule has genuinely stopped. The threshold has
-to exceed the rotation period, `boards / budget` days, with margin for the
-boards that hit the per-board timeout and shorten a pass. Re-derive it whenever
-the budget or the board count moves.
+`accenture.wd103/AccentureCareers` took over twelve minutes because its 2,000 jobs only predicted about three matches. This happened because of the same issue that broke its validation: **its listing returns an empty `locationsText` field.**
+
+Because `maybe_australian` cannot filter anything without a location, the adapter fetches details for all 2,000 jobs instead of the ~370 Australian ones. Out of 30 sampled boards, only 1 (3%) has blank locations. This means about 15 of the 505 boards have this issue. This is rare enough that it won't change the budget, but common enough that we need a per-board timeout to limit it.
+
+`--deadline` stops new boards from starting when the time limit is reached. This leaves one hour for exporting and publishing. It is safe because a board that is not fetched is never updated. It will just become old instead of incorrect.
+
+A 25-minute timeout per board provides extra protection. The deadline is checked before a board starts and is not checked again. With `CONCURRENCY = 4`, four boards can start just before the deadline and run without a limit. Also, the `httpx` 45s timeout applies to each request, not the whole board. If a board is cut off, it returns `complete=False`. The `store.py` script already refuses to close anything from that status.
+
+**The order is based on the last attempt, not the last success.**
+
+Mixing these up creates a "starvation loop" instead of just being slow. If you rank by successful fetches, a board that never finishes successfully will stay at the front of the list. It gets picked first every night, uses up its minutes, fails, and then moves to the front again the next day. A few boards, like Accenture, would stay at the front of the budget forever. Meanwhile, boards that actually work would move further back.
+
+Ranking by attempts sends a board that just cost us minutes to the back of the line, even if it failed. However, a board that no one has ever tried yet will jump to the front of the queue. This is what a new board needs.
+
+One knock-on: at 866 boards and `--budget 450`, a board is fetched every 1.9 days by design.
+
+Because of this, `runs.STALE_HOURS` changed from 48 to 96. At 48 hours, the runs page would show a large, growing stale count for a pipeline that was actually working correctly. This trains people to ignore the one number that shows when a schedule actually stops.
+
+The threshold must be higher than the rotation period (`boards / budget` days). It also needs extra room for boards that hit the per-board timeout and finish early. Recalculate this number whenever the budget or the board count changes.
 
 ## The UI
 
@@ -980,154 +796,105 @@ the budget or the board count moves.
 uv run python -m muster.web        # http://127.0.0.1:8765
 ```
 
-A stdlib HTTP server and two static HTML files — no framework, no bundler, no
-Node. Four endpoints (`/api/search`, `/api/stats`, `/api/runs`, `/api/pulse`)
-and vanilla JS.
+A standard library HTTP server and two static HTML files. There is no framework, no bundler, and no Node.js. There are four endpoints (`/api/search`, `/api/stats`, `/api/runs`, `/api/pulse`) and vanilla JavaScript.
 
-The two pages are aimed at two different readers, and the split is deliberate.
-The front page is the **product**: someone looking for work, who does not care
-how the index is fed. No board or adapter counts, no failure states, no ATS
-vendor anywhere in the filters. Two pipeline facts did earn a place there, and
-only because the page now makes claims that depend on them: a **swept N hours
-ago** stamp in the masthead, and the date the index started watching for
-closures. A chart of the last sixteen weeks has to say how current it is, and a
-closures series has to say how far back it can see. Every other operational
-figure still lives on `/runs`, which the search page does not link to.
+The two pages are for different people. This split is on purpose.
 
-Narrowing is a search box, a **dial**, and two lists. The dial is the sixteen-week
-openings-and-closures chart, and dragging across it *is* the date filter — the
-chart and the control are one object, which is why there is no separate "posted
-this week" pill. The window it brushes is a pair of absolute dates rather than
-an age, so an export read three days after it was built still filters to the
-bars it was drawn against. The rail carries city and work type. The
-data-roles/all-roles toggle is gone: the page states its scope in the masthead
-and links out to the full AU set, instead of offering a control that halves the
-index's identity on click. The current search is still written to the URL, so a
-search is still a link, and links written before the dial existed still open the
-way they were shared.
+The front page is for the **product**. It is for people looking for work. These users do not care how the index is fed. There is no mention of boards, adapters, failure states, or ATS vendors in the filters. Only two pipeline facts are shown there. They are included because the page now uses them:
+* A **swept N hours ago** stamp in the masthead.
+* The date the index started watching for closures.
 
-The pulse is role-level, from `posted_at` and `closed_at` — deliberately not
-`board_runs`, whose churn series counts a board's first sight as new and would
-therefore draw the week the index booted as the biggest hiring week on record.
-The closures half carries a second caveat that the chart states outright:
-`closed_at` records when *this* index noticed a role gone, so it cannot predate
-the first sweep. Weeks that ended before then are hatched rather than drawn as
-zero, because the absence of a measurement is not a measurement of zero. Fourteen
-of the sixteen bars are hatched today, and they fill in as the log accrues.
+A chart of the last sixteen weeks shows how current the data is. A closures series shows how far back the data goes. All other operational numbers are still on `/runs`. The search page does not link to that page.
 
-`/runs` is the **ingest health** page. `board_runs` has logged a row per board
-per pass since the first commit and nothing ever read it back; once ingestion is
-scheduled rather than typed, that log is the only evidence the index is still
-being fed. A board that started 404ing six weeks ago looks identical, from the
-search page, to a board that genuinely has no open roles. It leads with how long
-ago the last board was fetched, then rolls up each board's most recent run per
-adapter, and separates three states that are easy to conflate: **failed** (the
-fetch errored), **incomplete** (parsed fewer jobs than the vendor claimed, so it
-is forbidden from closing anything — being read, but not retiring filled roles),
-and **stale** (last run succeeded; nothing has run it since, which is how a dead
-schedule shows up). Status colour is always paired with the word, since
-green/amber/red is exactly the palette a colourblind reader cannot separate.
+Narrowing has a search box, a **dial**, and two lists. The dial shows a sixteen-week chart of openings and closures. Dragging across the chart acts as the date filter. The chart and the control are the same object. This is why there is no "posted this week" button.
 
-Search is FTS5 over title + body + company name. **The UI is SQLite-only for
-now** — `search.py` is sqlite3 throughout, so the server refuses to start with a
-clear message if `DATABASE_URL` is set. Ingestion already honours Postgres; the
-query layer needs a tsvector path before the UI can follow, and the indexes are
-waiting for it in `schema_postgres.sql`. Filters are the four a job hunter
-actually narrows on — data roles (on by default) or all, city, work type, and
-posted this week — and the current search is written to the URL, so a search is
-a link.
+The window filters by two specific dates instead of a time range. This means an export from three days later will still show the same bars it was drawn against.
 
-Three filters were cut rather than restyled. **Published salary**: 57 of 3,341
-open AU roles carry a structured band, so both the filter and the salary sort
-returned a screenful and then silently fell back to dates — a control that
-looks broken is worse than one that is absent. Salary still renders on the
-roles that have it. **Employer** and **ATS vendor**: the search box already
-matches on company name, and which applicant tracking system an employer
-happens to license is not something a candidate is shopping for. The city
-picker is a fixed metro list intersected with the index's own values, because
-the raw column holds `Barangaroo`, `North Ryde` and `MOUNT WAVERLEY` alongside
-the capitals.
+The rail shows the city and work type. The "data-roles/all-roles" toggle is removed. The page now shows its scope in the header and links to the full AU set. This replaces the button that would have split the index.
 
-Two things the first screenshot exposed, both now fixed:
+The current search is still saved to the URL. A search is still a link. Links made before the dial were added still work as they were shared.
 
-- **Every role read "today"**, because `first_seen_at` records when *this index*
-  first saw a job, not when the employer posted it. Vendors all publish their own
-  date (`first_published`, `publishedAt`, `releasedDate`), so there is now a
-  `posted_at` column and the UI sorts and labels on it. `first_seen_at` keeps its
-  original meaning. Of 2,724 open AU roles: 87 posted today, 384 this week,
-  1,334 this month.
-- **The data-roles filter matched "Senior Tax Analyst" and "Cyber Security
-  Analyst".** Bare "analyst" is far too broad for an index this size, so it now
-  only counts when it is not one of ~20 excluded qualifiers (tax, payroll,
-  cyber, procurement, audit…). Strong signals — data scientist, ML, analytics,
-  quantitative, econometric — always match.
+The pulse is based on the role level, using `posted_at` and `closed_at`. It does not use `board_runs`. This is because `board_runs` counts a board's first appearance as new. If we used that, the week the index started would look like the biggest hiring week ever.
+
+The `closed_at` data has a second rule shown on the chart: `closed_at` only records when this index first sees a role is gone. It cannot show dates before the first scan. Weeks that ended before that time are shown as hatched lines instead of zero. This is because a missing measurement is not the same as a zero measurement. Today, fourteen of the sixteen bars are hatched. They will fill in as more data is added to the log.
+
+`/runs` is the **ingest health** page. The `board_runs` table logs one row per board for every pass since the first commit. No one has ever read this data before. Once ingestion is scheduled instead of typed, this log is the only way to see if the index is still being updated.
+
+A board that started showing 404 errors six weeks ago looks the same as a board with no open roles on the search page. The page shows how long ago the last board was fetched. It then shows the most recent run for each board per adapter.
+
+It separates three states that are easy to confuse:
+* **failed** (the fetch had an error)
+* **incomplete** (the system found fewer jobs than the vendor reported, so it cannot close anything—it is being read but not retiring filled roles)
+* **stale** (the last run worked, but nothing has run since, which happens when a schedule dies)
+
+Status colors are always shown with words. This is because people who are colorblind cannot tell the difference between green, amber, and red.
+
+Search uses FTS5 to look through the title, body, and company name. **The UI only works with SQLite for now.** The `search.py` file uses sqlite3 everywhere. The server will not start if `DATABASE_URL` is set; it will show a clear error message.
+
+Data ingestion already supports Postgres. However, the query layer needs a tsvector path before the UI can work. The indexes are ready in `schema_postgres.sql`.
+
+Job hunters use four filters to narrow down results:
+* Data roles (on by default) or all
+* City
+* Work type
+* Posted this week
+
+The current search is written to the URL, so a search result is a link.
+
+Three filters were removed instead of redesigned.
+
+**Published salary**: 57 of 3,341 open AU roles have a salary band. Because of this, both the filter and the salary sort showed a full screen of results and then switched to dates. A broken control is worse than no control at all. Salary still shows up on the roles that have it.
+
+**Employer** and **ATS vendor**: The search box already matches company names. Candidates do not search for which applicant tracking system an employer uses.
+
+The city picker uses a fixed list of major cities mixed with the index's own values. This is because the raw column contains locations like `Barangaroo`, `North Ryde`, and `MOUNT WAVERLEY` along with the capital cities.
+
+Two things the first screenshot showed, both of which are now fixed:
+
+- **Every role shows as "today"** because `first_seen_at` marks when *this index* first saw the job, not when the employer posted it. Since different vendors use different names for dates (like `first_published`, `publishedAt`, or `releasedDate`), we added a `posted_at` column. The UI now sorts and labels jobs using that column. `first_seen_at` still means what it did before. Out of 2,724 open AU roles: 87 were posted today, 384 this week, and 1,334 this month.
+- **The data-roles filter matched "Senior Tax Analyst" and "Cyber Security Analyst".** Searching for just "analyst" is too broad for an index this large. Now, it only counts if the job is not one of about 20 excluded types (like tax, payroll, cyber, procurement, audit, etc.). Strong signals like data scientist, ML, analytics, quantitative, and econometric always match.
 
 ### Matching a résumé, and the number that is not there
 
-Drop a résumé on the front page and the list reorders against it. The file is
-read in the browser and never uploaded — the published site is static files on a
-CDN with no server to send it to, so this is a property of where the feature
-runs, not a promise about what a server does with it. PDFs are parsed by a
-`pdf.js` build fetched only when a PDF is actually dropped; paste and `.txt` need
-nothing. The panel is gated on the static path for the same reason it is private:
-ranking needs every role's skills against one résumé in a single pass, which the
-in-browser backend already has in memory and `/api/search`, answering fifty rows
-at a time, would only have if the résumé were sent to it.
+Drop a résumé on the front page to reorder the list. The file is read in the browser and is never uploaded. The site uses static files on a CDN, so there is no server to send the file to. This feature works because of where it runs in the browser, not because of what a server does.
 
-**`kw` could not be what it matches on**, which is the whole reason there is a
-second column. `search.keywords` drops any token more than 4% of the corpus
-carries — deliberately, because those are the tokens that cannot narrow a search.
-That is also precisely where a résumé's vocabulary lives: `python` and `aws` are
-in **0%** of the exported keyword blobs, and in 7 and 6 of 8,852 *titles*. So
-`sk` is a closed list of 72 skills matched against each ad's full description at
-export time, stored as slugs. A hex bitmask over the same vocabulary is 8.0KB
-gzipped against 10.0KB for slugs; the 2KB buys a column where a wrong flag reads
-as `powerbi` in a row that never mentions Power BI, rather than as `a4f01c`.
+PDFs are parsed by a `pdf.js` build. This is only downloaded when a PDF is dropped. Paste and `.txt` files do not need this.
 
-The manifest ships the vocabulary, the match patterns and a **document frequency
-per skill**, all three because the page cannot derive them. The frequencies are
-what make the ranking mean anything: `python` is in 469 roles and `dbt` in 38, so
-matching `dbt` is worth more, and without that weighting the three commonest
-tools in the index decide every result. The patterns ship rather than being
-retyped in JS for the same reason `data_terms` does — the ad side runs in Python
-and the résumé side runs in the page, and a form one side knows and the other
-does not is a match that silently never happens. `tests/test_skills_parity.py`
-lifts the page's own matching code out of `index.html` and runs it against
-Python's over the whole vocabulary, so that drift fails a test instead of quietly
-mis-ranking.
+The panel is restricted to the static path for privacy. Ranking needs to compare every role's skills against one résumé in a single pass. The in-browser backend already has this data in memory. Using `/api/search` would only work if the résumé were sent to the server, and it would only return fifty rows at a time.
 
-**There is no "odds of getting hired", and there was never going to be.** It is
-the obvious thing to put next to a ranked job and it would be invented. This
-index has never observed an application, an interview or a hire; it watches
-requisitions appear and disappear, and it has been watching for days rather than
-months. Nothing in it could train such a number or check one. What ships in that
-slot instead is what the index did see: how long the req has been open — which
-the list already carried — and how many identical ones the same board has open.
-The bar on each row is stated, in the panel and on hover, as a share of
-vocabulary relative to the best match in the list.
+**`kw`** cannot be what it matches. This is why there is a second column. `search.keywords` removes any word that appears in more than 4% of the corpus. This is done on purpose because those words do not help narrow down a search.
 
-The duplicate count is also why the ranked list is the one place the index
-**collapses rows**. Identity here is the ATS's own requisition id, so two reqs
-with the same title on one board are two records and the default list shows two
-rows — that is the claim the project rests on. But a ranking is a different lens
-over the same records: every slot in it should be a distinct thing to apply to,
-and two adjacent identical rows each captioned "2 identical reqs" is a caption
-describing what the reader can already see. Collapsed, the AU slice goes from
-8,852 rows to 7,657, and the caption becomes a fact about the role — Culture Amp
-wants two Associate Data Scientists — rather than a warning about the list.
+This is also where a résumé's vocabulary is found: `python` and `aws` appear in **0%** of the exported keyword blobs. They appear in 7 and 6 of 8,852 *titles*.
 
-Two numbers the page states rather than hides. **479 roles publish no description
-at all**, so no vocabulary can be read from them and they cannot be ranked either
-way; the footer says so. And only **3,104 of 8,852** name any skill in the
-vocabulary — which is not a gap in the vocabulary but the index being what it
-says it is: every open Australian role, most of which are not data roles and
-correctly match a data résumé on nothing. The list is ranked, never filtered, so
-those roles are still there, still searchable, and say on their own row that they
-share nothing.
+Therefore, `sk` is a fixed list of 72 skills. These are matched against each ad's full description during export and stored as slugs. A hex bitmask using the same vocabulary is 8.0KB when gzipped. The slugs are 10.0KB. The 2KB difference allows for a column where a wrong flag shows as `powerbi` in a row that never mentions Power BI, instead of showing as `a4f01c`.
+
+The manifest sends the vocabulary, the match patterns, and the **document frequency per skill**. The page cannot figure these out on its own. These frequencies are necessary for ranking. For example, `python` appears in 469 roles while `dbt` appears in only 38. This means matching `dbt` is more important. Without this weighting, the three most common tools would decide every result.
+
+The patterns are sent instead of being rewritten in JS. This is the same reason for `data_terms`. The ad side runs in Python and the résumé side runs on the page. If one side uses a format the other does not understand, the match will fail silently.
+
+`tests/test_skills_parity.py` takes the page's matching code out of `index.html`. It runs that code against the Python version over the whole vocabulary. This ensures that any differences cause a test to fail instead of causing wrong rankings.
+
+**There is no "odds of getting hired" and there never was.** It would be easy to add a number for that next to a ranked job, but it was not created. This index does not track applications, interviews, or hires. It only watches job postings appear and disappear. It has been watching for days, not months. Nothing in the system can calculate or check a hiring probability.
+
+Instead, the list shows what the index actually saw:
+* How long the job has been open.
+* How many identical jobs are open on the same board.
+
+The bar on each row shows a share of vocabulary compared to the best match in the list. This is shown in the panel and when you hover over the row.
+
+The duplicate count is why the ranked list is the only place where the index collapses rows. In this system, identity is based on the ATS's own requisition ID. This means two requests with the same title on one board are two separate records. The default list shows two rows for these. This is the basis of the project.
+
+However, a ranking looks at the same records differently. Every slot in a ranking should be a unique item. Having two identical rows next to each other with the caption "2 identical reqs" just describes what the reader can already see.
+
+When collapsed, the AU slice goes from 8,852 rows to 7,657. The caption then becomes a fact about the role: Culture Amp wants two Associate Data Scientists. It is no longer a warning about the list.
+
+The page shows two numbers instead of hiding them. **479 roles have no description at all**. Because of this, you cannot read any vocabulary from them and they cannot be ranked. The footer explains this.
+
+Only **3,104 out of 8,852** roles mention any skill in the vocabulary. This is not a missing part of the vocabulary. Instead, the index shows what it is supposed to show: every open Australian role. Most of these are not data roles. They correctly match a data résumé on nothing. The list is ranked but not filtered. Those roles are still there and can be searched. Each row says they share nothing.
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE). Permissive like MIT, but it also grants
+Apache 2.0 — see [LICENSE](../LICENSE). Permissive like MIT, but it also grants
 patent rights explicitly and requires that attribution be preserved, which
 matters more for something with a working pipeline in it than for a snippet.
 
@@ -1443,6 +1210,9 @@ on each run, then ~96% are discarded at the store boundary by the AU-only policy
 Harmless today; if the daily cron gets slow, that is where the time goes, and the
 fix is to thread the AU decision into the mapper instead of deciding in
 `_upsert`. It was left alone deliberately so `Store(descriptions="all")` keeps
-working. `AU - HQ - NSW`
-resolves to country AU but no city — a state column would fix it, but that's a
-schema change, so it's deferred to the normalisation pass.
+working.
+
+Known gap in location parsing: a string like `AU - HQ - NSW` resolves to country
+AU but to no city, so the role lands with a country and a blank city. A state
+column would fix it, but that is a schema change, so it is deferred to the
+normalisation pass.

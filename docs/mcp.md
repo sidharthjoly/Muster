@@ -1,26 +1,25 @@
 # The MCP endpoint
 
-Muster's index is available to agents over [MCP](https://modelcontextprotocol.io),
-so a model can search roles, look one up, check the index's own health and rank a
-résumé without holding the published JSON in its context.
+Agents can use [MCP](https://modelcontextprotocol.io) to access Muster's index. This lets a model search for roles, look up specific details, check the index's health, and rank a résumé without keeping the full JSON file in its memory.
 
 ```
 https://muster.sidharthjoly.com/mcp
 ```
 
-Streamable HTTP transport, no authentication and no rate limit. Everything it
-serves is already public at [`/data/v1/`](api.md), so a key would guard nothing.
+Streamable HTTP transport. There is no authentication and no rate limit. Everything it serves is already public at [`/data/v1/`](api.md), so a key would not protect anything.
 
-**Everything here is a snapshot.** The endpoint reads the static export, which is
-rebuilt about four times a day. Every response carries the build time and its age
-in hours — read that before quoting a count, because "9,146 open roles" was true
-when the export ran and not necessarily now.
+| tool | what it answers |
+|---|---|
+| [`search_roles`](#search_roles) | which open jobs match these words, city, employer, or dates |
+| [`get_role`](#get_role) | all details about one job, plus how many other jobs that employer has |
+| [`index_health`](#index_health) | how new the data is, what it covers, and where errors are |
+| [`match_resume`](#match_resume) | ranks open jobs based on a resume's text |
+
+**Everything here is a snapshot.** The endpoint reads a static export. This export is rebuilt about four times a day. Every response shows the build time and how many hours old it is. Read that before you quote a count. For example, "9,146 open roles" was true when the export ran, but it might not be true now.
 
 ## Connecting
 
-One click, if your editor takes an install link. Both carry the same thing the
-rest of this section types out by hand — a transport and a URL, no key, nothing
-to substitute:
+One click, if your editor accepts an install link. Both have the same things the rest of this section writes out by hand — a transport and a URL, no key, and nothing to replace:
 
 <p>
   <a href="https://vscode.dev/redirect/mcp/install?name=muster&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmuster.sidharthjoly.com%2Fmcp%22%7D"><img alt="Add Muster to VS Code" src="https://img.shields.io/badge/VS%20Code-add%20Muster-0098FF.svg"></a>
@@ -33,7 +32,7 @@ Claude Code:
 claude mcp add --transport http muster https://muster.sidharthjoly.com/mcp
 ```
 
-Any client that takes a JSON config (Claude Desktop, Cursor, and most others):
+Any client that uses a JSON config (like Claude Desktop, Cursor, and most others):
 
 ```json
 {
@@ -46,8 +45,7 @@ Any client that takes a JSON config (Claude Desktop, Cursor, and most others):
 }
 ```
 
-Or speak to it directly — it is a plain `POST` of JSON-RPC, and the `Accept`
-header is required by the transport:
+Or talk to it directly — it is a simple `POST` of JSON-RPC. You must include the `Accept` header for the transport:
 
 ```bash
 curl -s -X POST https://muster.sidharthjoly.com/mcp \
@@ -56,12 +54,11 @@ curl -s -X POST https://muster.sidharthjoly.com/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-Responses come back as a single server-sent event, so strip the `event:` and
-`data:` prefixes to get the JSON body.
+Responses come back as one server-sent event. Remove the `event:` and `data:` prefixes to get the JSON body.
 
 ## The snapshot envelope
 
-Every tool result — including the error shapes below — carries this:
+Every tool result — including the error shapes below — includes this:
 
 ```json
 "snapshot": {
@@ -71,27 +68,25 @@ Every tool result — including the error shapes below — carries this:
 }
 ```
 
-The site puts this in its page chrome. A tool result has no chrome, and a model
-that cannot see the age of what it is reading will state a four-hour-old vacancy
-count in the present tense, so it lives in the payload instead.
+The site puts this in its page chrome. A tool result has no chrome. A model that cannot see the age of what it is reading will say a four-hour-old vacancy count is current. Therefore, it lives in the payload instead. The counts in the examples below are for example — every one of them has changed since.
 
 ## `search_roles`
 
-Search open Australian roles. Defaults to the data/analytics/ML slice.
+Search for open jobs in Australia. By default, it shows jobs in data, analytics, and machine learning.
 
 | parameter | type | notes |
 |---|---|---|
-| `q` | string | Words that must **all** appear in the title, employer, or the role's indexed vocabulary. Substring, case-insensitive. |
-| `scope` | `data` \| `all` | `data` (default) is the data/analytics/ML slice; `all` is every open Australian role. |
-| `city` | string | Exact match on the employer's own city field, e.g. `Sydney`. |
-| `company` | string | Substring match on the employer name. |
-| `ats` | string | One of `greenhouse`, `workday`, `lever`, `ashby`, `smartrecruiters`, `oracle`, `eightfold`. |
-| `remote` | string | Exact match on the employer's own field. Frequently `unknown`. |
-| `since` / `until` | ISO date | Posted on or after / strictly before, `YYYY-MM-DD`. |
-| `has_salary` | boolean | Only roles publishing a band — well under 1% do. |
-| `sort` | `newest` \| `salary` | Default `newest`. `salary` sorts nulls last. |
-| `limit` | integer | 1–200, default 25. |
-| `offset` | integer | For paging; `total` tells you how far you can go. |
+| `q` | string | Words that must appear in the title, employer, or role vocabulary. It looks for parts of words and ignores capital letters. |
+| `scope` | `data` \| `all` | `data` (default) shows data, analytics, and ML jobs. `all` shows every open job in Australia. |
+| `city` | string | Must match the employer's city exactly, like `Sydney`. |
+| `company` | string | Matches any part of the employer's name. |
+| `ats` | string | Choose one: `greenhouse`, `workday`, `lever`, `ashby`, `smartrecruiters`, `oracle`, or `eightfold`. |
+| `remote` | string | Must match the employer's field exactly. Often says `unknown`. |
+| `since` / `until` | ISO date | Jobs posted on or after / before a date. Use `YYYY-MM-DD`. |
+| `has_salary` | boolean | Only shows jobs that list a salary range. Less than 1% of jobs have this. |
+| `sort` | `newest` \| `salary` | Default is `newest`. `salary` puts jobs with no salary at the end. |
+| `limit` | integer | Choose 1 to 200. Default is 25. |
+| `offset` | integer | Used for paging. Use `total` to see how far you can go. |
 
 ```json
 {"name": "search_roles", "arguments": {"q": "dbt", "city": "Melbourne", "limit": 1}}
@@ -118,25 +113,23 @@ Search open Australian roles. Defaults to the data/analytics/ML slice.
 }
 ```
 
-`total` counts every match, not the page. Rows carry `salary_min`, `salary_max`
-and `salary_currency` only when the employer published a band; absent keys mean
-"not published", which is the common case.
+`total` counts every match, not the page. Rows only have `salary_min`, `salary_max`, and `salary_currency` if the employer shared a salary range. If these keys are missing, it means the salary was not published. This is the most common case.
 
 ## `get_role`
 
-One role by the `id` that `search_roles` returns.
+One role from the list that `search_roles` returns, identified by its `id`.
 
 | parameter | type | notes |
 |---|---|---|
 | `id` | string | **Required.** `<ats>:<board_token>:<external_id>`. |
 
-Returns the same fields plus three more: `is_data_role`, the role's detected
-`skills` (the closed vocabulary the résumé matcher scores against), its
-`vocabulary` (the rare terms from the ad, which is what `q` searches), and
-`identical_openings_at_this_employer` — how many live requisitions that employer
-is carrying under the same title. That last one is what Muster publishes in place
-of a made-up match score: an employer with eight identical openings is hiring a
-team, and that is worth knowing.
+Returns the same fields plus four more:
+* `is_data_role`
+* `skills` (the closed vocabulary the résumé matcher scores against)
+* `vocabulary` (the rare terms from the ad, which is what `q` searches)
+* `identical_openings_at_this_employer` — how many live jobs that employer has with the same title. 
+
+Muster uses that last number instead of a made-up match score. If an employer has eight identical openings, they are hiring a team, and that is important to know.
 
 ```json
 {
@@ -149,7 +142,7 @@ team, and that is worth knowing.
 }
 ```
 
-An unknown id is not an exception — it returns a result saying so:
+An unknown id is not an error. It returns a result that says it is unknown:
 
 ```json
 {
@@ -160,10 +153,22 @@ An unknown id is not an exception — it returns a result saying so:
 
 ## `index_health`
 
-No parameters. Returns what the index holds and how fresh it is: open counts,
-boards watched, the last sweep, how stale the oldest board is, per-ATS health,
-and a `caveats` array naming the coverage limits in prose — use it to answer
-questions about Muster's own reliability rather than guessing at them.
+No parameters. It returns what the index contains and its freshness. This includes:
+* open counts
+* boards watched
+* the last sweep
+* how old the oldest board is
+* per-ATS health
+* a `caveats` array
+
+The `caveats` array lists coverage limits in plain text. Use this to answer questions about Muster's reliability instead of guessing.
+
+`boards_failed` and each vendor's `incomplete` count are the two important numbers to look at together:
+
+*   A failed board was not fetched.
+*   An incomplete board was fetched but had fewer jobs than the vendor claimed.
+
+An incomplete board cannot close anything until it is fully loaded.
 
 ```json
 {
@@ -187,16 +192,16 @@ questions about Muster's own reliability rather than guessing at them.
 
 ## `match_resume`
 
-Ranks open roles against résumé text using the same scoring the website uses: a
-closed skill vocabulary weighted by how rare each term is across the index, plus
-a title match, minus a penalty where the résumé states a level two or more rungs
-below the role.
+Ranks open jobs against a résumé using the same scoring system as the website:
+*   A list of skills where each word is worth more if it is rare in the index.
+*   A match for the job title.
+*   A penalty if the résumé shows a level two or more steps below the job level.
 
 | parameter | type | notes |
 |---|---|---|
-| `resume` | string | **Required.** Plain text, up to 60,000 characters. |
-| `scope` | `data` \| `all` | Default `data`. |
-| `limit` | integer | 1–100, default 25. |
+| `resume` | string | **Required.** Plain text. Maximum 60,000 characters. |
+| `scope` | `data` \| `all` | Default is `data`. |
+| `limit` | integer | 1–100. Default is 25. |
 
 ```json
 {
@@ -221,23 +226,15 @@ below the role.
 }
 ```
 
-`read_from_resume` is what the matcher understood, so a bad ranking can be
-diagnosed rather than guessed at. `level` is 0–5 from graduate to executive, and
-`null` when the résumé doesn't state one.
+`read_from_resume` is what the matcher used. This helps identify why a ranking is bad instead of guessing. `level` is a score from 0 to 5 (from graduate to executive). It is `null` if the resume does not list a level.
 
-**This ranks and never filters.** `total_ranked` is every role in scope;
-`matched` is how many scored above zero. A role sharing nothing with the résumé
-sinks to the bottom with an empty `matched_on` rather than being hidden.
+**This ranks items and never hides them.** `total_ranked` shows every role in the list. `matched` shows how many scored higher than zero. If a role has nothing in common with the résumé, it goes to the bottom of the list. It will have an empty `matched_on` instead of being removed.
 
-`relative_score` compares each role with the best match **in that response** — it
-is not a probability and not comparable across calls. Muster has never observed
-an application, an interview or a hire, so there is no such number to give.
+`relative_score` compares each role to the best match in that specific response. It is not a probability. You cannot compare scores across different calls. Muster has never seen an application, interview, or hire, so there is no number for that.
 
-`stretch: true` marks a role two or more levels above what the résumé claims. It
-is shown rather than filtered, because a reader may well want the stretch roles.
+`stretch: true` means a role is two or more levels higher than what the résumé says. These roles are shown instead of hidden because a reader might want to see them.
 
-Text with no recognisable skill or role title returns an error rather than an
-invented ordering:
+Text without a clear skill or role title will show an error instead of creating a fake order.
 
 ```json
 {
@@ -249,20 +246,10 @@ invented ordering:
 
 ### On sending a résumé to a server
 
-The website ranks in your browser and has nothing to upload to. This endpoint is
-a server, so `match_resume` necessarily receives the text. It is scored in memory
-for the one call and neither stored nor logged — but that is a promise about what
-a server does with your data, which is exactly the weaker thing the website
-avoids needing. If the distinction matters, use the site, or run the ranking
-yourself from `jobs-data.json` and the vocabulary in `manifest.json`.
+The website ranks in your browser and has no files to upload. This endpoint is a server, so `match_resume` always gets the text. It scores the text in memory for one call. It does not store or log the data. This is a promise about how the server handles your data, which is a weak security measure the website tries to avoid. If this difference matters to you, use the site. Otherwise, you can run the ranking yourself using `jobs-data.json` and the vocabulary in `manifest.json`.
 
 ## What it is
 
-A Cloudflare Worker, routed on `/mcp` of the same hostname as the data files,
-with everything else falling through to the static site. It holds no database
-connection — it fetches the published export, caches it per isolate against the
-CDN's ETag, and filters in memory. That is why it cannot disagree with the
-website: it is reading the website's own data.
+A Cloudflare Worker handles requests at `/mcp` on the same website as the data files. All other requests go to the static site. The worker does not use a database. It gets the published export, saves it in the cache based on the CDN's ETag, and filters the data in memory. Because it reads the website's own data, it will never show different information than the website.
 
-Source: [`mcp/`](../mcp/). The row schema and the data files themselves are in
-[`api.md`](api.md).
+Source: [`mcp/`](../mcp/). The row schema and data files are in [`api.md`](api.md).
