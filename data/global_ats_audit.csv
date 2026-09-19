@@ -12,7 +12,7 @@ Johnson & Johnson,jnj.com,pharma,workday,jj.wd5/JJ,https://www.careers.jnj.com/,
 LVMH,lvmh.com,luxury,smartrecruiters,lvmh,https://www.lvmh.com/join-us/,4,endpoint-200,4 open roles,
 Mastercard,mastercard.com,fintech,phenom,cdn,https://careers.mastercard.com/,,careers-page-html,found in careers page markup,phenom:cdn; phenom:pp-cdn; phenom:content-us; phenom:cdn-prod-static; phenom:cdn-bot; workday:mastercard
 McDonalds,mcdonalds.com,food,smartrecruiters,McDonaldsCorporation,https://careers.mcdonalds.com/,4,endpoint-200,4 open roles,
-Netflix,netflix.com,tech,eightfold,,https://explore.jobs.netflix.net/careers,,careers-page-html,found in careers page markup | tenant not confirmed,eightfold:netflix
+Netflix,netflix.com,tech,eightfold,netflix/netflix.com,https://explore.jobs.netflix.net/careers,,endpoint-200,AU-scoped board | non-PCSX tenant: lists on /api/apply/v2/jobs,eightfold:netflix
 Nike,nike.com,retail,avature,nikeats,https://careers.nike.com/,,careers-page-html,found in careers page markup,avature:nikeats; workday:nike
 Novartis,novartis.com,pharma,workday,novartis.wd3/Internal_Careers_for_Acquired_Entities,https://www.novartis.com/careers,,careers-deep-crawl,novartis.wd3|site=Internal_Careers_for_Acquired_Entities,workday:novartis
 NVIDIA,nvidia.com,tech,eightfold,,https://www.nvidia.com/en-au/about-nvidia/careers/,,careers-page-html,NOT REGISTERED: already indexed via Workday with the same 10 AU roles; registering both would duplicate every requisition,eightfold:nvidia
