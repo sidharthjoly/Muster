@@ -1,0 +1,1827 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muster — data roles in Australia</title>
+<meta name="description" content="Open data, analytics and machine learning roles in Australia, taken straight from employers' own hiring systems.">
+<!-- Barlow is the Industry system's face. It is loaded as an enhancement, not a
+     dependency: this page also ships as a static export that has to work as a
+     file opened from disk with no network, so every font token falls back to
+     the platform UI face and the layout is measured in rem, not in Barlow. -->
+<!-- The mark, drawn for 16px. SVG rather than .ico because the page is
+     also opened as a file from disk, where a relative svg works and a
+     generated multi-size bundle would be one more build step. -->
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap">
+<style>
+  /* ── Industry design system ──────────────────────────────────────────────
+     Steel-blue on a light technical ground: Barlow Condensed headings over
+     Barlow, a modular grid, and cards and figures framed as blueprint objects
+     — square-cornered, hairline-bordered, with "+" registration marks.
+
+     Tokens and component classes are ported from the system's styles.css
+     rather than linked, because the export copies named page files into
+     `site/` and a sibling stylesheet would neither be copied nor resolve from
+     a file:// open. Only the subset this page uses is carried over. */
+  /* ==== SHARED WITH THE OTHER PAGE — START. Edit both, then run the
+     check in runs.html's header comment. ==== */
+  :root {
+    --color-bg:#f2f2f3;
+    --color-surface:#e9e9ea;
+    --color-text:#1d1f20;
+    --color-accent:#5980a6;
+    --color-divider:color-mix(in srgb, #1d1f20 16%, transparent);
+
+    /* Tonal ramps — one shared OKLCH lightness scale, so the same step of any
+       role matches the others in visual value. */
+    --color-neutral-100:#f5f5f8; --color-neutral-200:#e7e7ea;
+    --color-neutral-300:#d4d4d7; --color-neutral-400:#b7b7ba;
+    --color-neutral-500:#98989b; --color-neutral-600:#7a7a7d;
+    --color-neutral-700:#5d5d60; --color-neutral-800:#424244;
+    --color-neutral-900:#2b2b2d;
+
+    --color-accent-100:#eef6ff; --color-accent-200:#d6ebff;
+    --color-accent-300:#b5d9fd; --color-accent-400:#94bce3;
+    --color-accent-500:#749dc4; --color-accent-600:#597ea3;
+    --color-accent-700:#416180; --color-accent-800:#2c455d;
+    --color-accent-900:#1d2d3d;
+
+    --font-heading:"Barlow Condensed",system-ui,-apple-system,'Segoe UI',sans-serif;
+    --font-heading-weight:600;
+    --font-body:Barlow,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+
+    --space-1:3.4px; --space-2:6.8px; --space-3:10.2px;
+    --space-4:13.6px; --space-6:20.4px; --space-8:27.2px;
+
+    --radius-sm:2px; --radius-md:4px; --radius-lg:7px;
+
+    --shadow-sm:0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
+    --shadow-md:0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent);
+    --shadow-lg:0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
+
+    /* Page-local: the two dial series. `opened` is the accent, `closed` a
+       neutral — the system is mono, so the second series is a value step
+       rather than a second hue. */
+    --up:var(--color-accent);
+    --dn:var(--color-neutral-400);
+  }
+
+  *, *::before, *::after { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--color-bg); color:var(--color-text);
+    font-family:var(--font-body); font-size:15px; line-height:1.55;
+    font-weight:400; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); line-height:1.12;
+    letter-spacing:-0.015em; margin:0 0 var(--space-2); }
+  h1 { font-size:42px; } h2 { font-size:32px; } h3 { font-size:25px; }
+  h4 { font-size:20px; } h5 { font-size:16px; }
+  h6 { font-size:13px; letter-spacing:0.08em; text-transform:uppercase; }
+  p { margin:0 0 var(--space-3); }
+  a { color:var(--color-accent); text-underline-offset:3px; }
+  a:hover { color:var(--color-accent-700); }
+  .text-muted { color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  :focus { outline:none; }
+  :focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }
+  ::selection { background:color-mix(in srgb, var(--color-accent) 30%, transparent); }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden;
+    clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
+
+  /* — blueprint frame: the wireframe object every figure and panel wears — */
+  .blueprint { position:relative; border:1px solid var(--color-divider);
+    border-radius:0; }
+  .blueprint > .corner { position:absolute; width:11px; height:11px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .blueprint > .corner::before, .blueprint > .corner::after {
+    content:""; position:absolute; background:currentColor; }
+  .blueprint > .corner::before { left:5px; top:0; width:1px; height:100%; }
+  .blueprint > .corner::after { top:5px; left:0; width:100%; height:1px; }
+  .blueprint > .corner.tl { top:-6px; left:-6px; }
+  .blueprint > .corner.tr { top:-6px; right:-6px; }
+  .blueprint > .corner.bl { bottom:-6px; left:-6px; }
+  .blueprint > .corner.br { bottom:-6px; right:-6px; }
+
+  /* — buttons — */
+  .btn { display:inline-flex; align-items:center; justify-content:center;
+    gap:6px; cursor:pointer; text-decoration:none;
+    font-family:var(--font-heading); font-weight:var(--font-heading-weight);
+    font-size:14px; line-height:1.2; color:var(--color-text);
+    background:transparent; border:1px solid var(--color-divider);
+    padding:var(--space-2) calc(var(--space-3) * 1.2); border-radius:0; }
+  .btn svg { display:block; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .btn-primary { background:var(--color-accent); color:var(--color-bg);
+    border-color:var(--color-accent); }
+  .btn-primary:hover { background:var(--color-accent-600); }
+  .btn-primary:active { background:var(--color-accent-700); }
+  .btn-secondary:hover { background:color-mix(in srgb, var(--color-text) 7%, transparent); }
+  .btn-secondary:active { background:color-mix(in srgb, var(--color-text) 14%, transparent); }
+
+  /* — the header bar — */
+  .nav { display:flex; align-items:center; gap:var(--space-6);
+    max-width:1160px; margin:0 auto; padding:var(--space-3) var(--space-6); }
+  .nav-brand { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:17px;
+    letter-spacing:.02em; margin-right:auto; color:inherit;
+    text-decoration:none; }
+  .nav-brand em { font-style:normal; color:var(--color-accent); }
+  .nav-brand { display:inline-flex; align-items:center; gap:.45em; }
+  .nav-mark { width:1.15em; height:1.15em; flex:none; color:var(--color-accent); }
+  .nav a { color:inherit; text-decoration:none; font-size:14px; }
+  .nav a:hover, .nav a[aria-current='page'] { color:var(--color-accent); }
+  header.bar { border-bottom:1px solid var(--color-divider);
+    background:var(--color-bg); }
+  /* ==== SHARED WITH THE OTHER PAGE — END ==== */
+
+  /* — the shell — */
+  .wrap { max-width:1160px; width:100%; margin:0 auto;
+    padding:0 var(--space-6); }
+  .title { display:flex; align-items:flex-end; gap:var(--space-6);
+    flex-wrap:wrap; padding-top:var(--space-8); }
+  .title h1 { font-size:18px; margin:0; }
+  .title .scope { font-size:12px; }
+  .meta { margin-left:auto; display:flex; align-items:center;
+    gap:var(--space-4); font-size:12px; white-space:nowrap; }
+  .swept { display:flex; align-items:center; gap:7px; }
+  .swept i { width:7px; height:7px; background:var(--color-accent);
+    display:inline-block; }
+  .swept.cold i { background:var(--color-neutral-500); }
+
+  main { max-width:1160px; width:100%; margin:0 auto;
+    padding:var(--space-6) var(--space-6) var(--space-8); flex:1; }
+
+  /* — search — */
+  .input { width:100%; min-height:36px; padding:6px 10px; font:inherit;
+    font-size:14px; color:var(--color-text); caret-color:var(--color-accent);
+    background:var(--color-surface); border:1px solid var(--color-divider);
+    border-radius:0; }
+  .input:hover { border-color:color-mix(in srgb, var(--color-text) 45%, transparent); }
+  .input:focus-visible { border-color:var(--color-accent); outline-offset:0; }
+  .find { display:flex; gap:var(--space-3); align-items:stretch;
+    margin-bottom:var(--space-6); }
+  .findbox { position:relative; flex:1; min-width:0; display:flex;
+    align-items:center; }
+  .findbox > svg { position:absolute; left:11px; pointer-events:none;
+    color:var(--color-neutral-600); }
+  .findbox .input { height:40px; min-height:40px; padding-left:34px;
+    padding-right:34px; }
+  .xq { position:absolute; right:8px; width:22px; height:22px; display:grid;
+    place-items:center; border:0; background:transparent;
+    color:var(--color-neutral-700); cursor:pointer; font-size:16px;
+    line-height:1; opacity:0; pointer-events:none; transition:opacity .15s; }
+  .xq.on { opacity:1; pointer-events:auto; }
+  .find .btn { height:40px; opacity:.35; transition:opacity .15s; }
+  .find .btn.on { opacity:1; }
+
+  /* — the two-column board — */
+  .board { display:grid; grid-template-columns:minmax(190px,214px) minmax(0,1fr);
+    gap:var(--space-8); align-items:start; }
+  .rail { display:flex; flex-direction:column; gap:var(--space-6);
+    position:sticky; top:var(--space-4); }
+  .rail h6 { margin:0 0 var(--space-3); }
+  .results { min-width:0; display:flex; flex-direction:column;
+    gap:var(--space-6); }
+
+  /* — facets — */
+  .cities { display:flex; flex-direction:column; }
+  .cities button { display:flex; align-items:center; gap:8px; padding:5px 8px;
+    border:0; border-left:2px solid transparent; background:transparent;
+    color:var(--color-text); font:inherit; font-size:13.5px; text-align:left;
+    cursor:pointer; transition:background .15s, border-color .15s; }
+  .cities button:hover { background:color-mix(in srgb, var(--color-text) 6%, transparent); }
+  .cities button[aria-pressed="true"] { border-left-color:var(--color-accent);
+    background:color-mix(in srgb, var(--color-accent) 12%, transparent);
+    color:var(--color-accent-800); }
+  .cities b { flex:1; font-weight:400; }
+  /* The count bar is the rail's "map of where the roles are" — a value, drawn. */
+  .cities i { height:3px; background:var(--color-neutral-400); flex:none; }
+  .cities button[aria-pressed="true"] i { background:var(--color-accent); }
+  .cities em { font-style:normal; font-size:11.5px;
+    font-variant-numeric:tabular-nums;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .cities button[aria-pressed="true"] em { color:var(--color-accent-700); }
+
+  /* — the segmented work-type control — */
+  .seg { display:flex; width:100%; border:1px solid var(--color-divider);
+    border-radius:0; overflow:hidden; }
+  .seg button { flex:1; display:inline-flex; align-items:center;
+    justify-content:center; padding:6px 4px; font:inherit; font-size:12.5px;
+    border:0; background:transparent; color:var(--color-text);
+    cursor:pointer; }
+  .seg button + button { border-left:1px solid var(--color-divider); }
+  .seg button[aria-pressed="true"] { background:var(--color-accent);
+    color:var(--color-bg); }
+  .seg button:not([aria-pressed="true"]):hover {
+    background:color-mix(in srgb, var(--color-text) 7%, transparent); }
+  .note { font-size:11.5px; line-height:1.45; margin:var(--space-2) 0 0;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .note b { font-weight:500; color:color-mix(in srgb, var(--color-text) 75%, transparent); }
+
+  /* — the salary checkbox — */
+  .paid { display:flex; align-items:center; gap:8px; padding:5px 8px;
+    font-size:13.5px; cursor:pointer; transition:background .15s; }
+  .paid:hover { background:color-mix(in srgb, var(--color-text) 6%, transparent); }
+  .paid input { accent-color:var(--color-accent); width:14px; height:14px; }
+  .paid span { flex:1; }
+  .paid em { font-style:normal; font-size:11.5px;
+    font-variant-numeric:tabular-nums;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+
+  /* — the odometer: the live count, in the slot the design gives the scope
+       line. Geometry is load-bearing — `odometer()` translates each strip by
+       whole `em`s, so the window must stay exactly 1em tall. — */
+  .odo { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:26px;
+    letter-spacing:-.02em; line-height:1; display:flex; height:1em;
+    font-variant-numeric:tabular-nums; }
+  .odo span { display:inline-block; width:.52em; height:1em; overflow:hidden; }
+  .odo span u { display:block; text-decoration:none;
+    transition:transform .6s cubic-bezier(.22,1,.36,1); }
+  .odo span u i { display:block; height:1em; line-height:1em; font-style:normal; }
+  .odolabel { font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+
+  /* — the résumé panel. Not in the Industry composition, which only drew the
+       search board; it is a shipped feature of this page, so it is framed as a
+       blueprint object and kept. — */
+  .cv { margin:0; }
+  .cv[hidden] { display:none; }
+  .cvopen { display:flex; align-items:center; gap:10px; width:100%; height:40px;
+    padding:0 var(--space-3); border:1px dashed var(--color-divider);
+    background:transparent; font:inherit; font-size:13.5px;
+    color:var(--color-text); cursor:pointer; text-align:left;
+    transition:border-color .15s, background .15s; }
+  .cvopen:hover { border-color:var(--color-accent);
+    background:color-mix(in srgb, var(--color-accent) 6%, transparent); }
+  .cvopen svg { flex:none; color:var(--color-accent); }
+  .cvopen .hint { color:color-mix(in srgb, var(--color-text) 45%, transparent);
+    font-size:11.5px; }
+  .cvopen .x { margin-left:auto; font-size:11.5px; color:var(--color-accent-700); }
+  .cv[data-on=yes] .cvopen { border-style:solid; border-color:var(--color-accent);
+    background:color-mix(in srgb, var(--color-accent) 8%, transparent); }
+  .cvbody { margin-top:var(--space-3); padding:var(--space-4);
+    border:1px solid var(--color-divider); }
+  .cvbody[hidden] { display:none; }
+  .drop { display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:var(--space-6); border:1px dashed var(--color-divider);
+    background:var(--color-surface); cursor:pointer; text-align:center;
+    transition:border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color:var(--color-accent);
+    background:color-mix(in srgb, var(--color-accent) 7%, transparent); }
+  .drop b { font-size:13.5px; font-weight:500; }
+  .drop u { text-decoration-color:var(--color-accent); text-underline-offset:2px; }
+  .drop .fine { font-size:11.5px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .cvta { width:100%; margin-top:var(--space-3); min-height:74px;
+    max-height:180px; padding:var(--space-3); font:inherit; font-size:13px;
+    color:var(--color-text); background:var(--color-surface);
+    border:1px solid var(--color-divider); border-radius:0; resize:vertical; }
+  .cvta:focus-visible { border-color:var(--color-accent); outline-offset:0; }
+  .cvnote { margin:var(--space-3) 2px 0; font-size:11px; line-height:1.6;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .cvnote b { color:color-mix(in srgb, var(--color-text) 75%, transparent);
+    font-weight:500; }
+  .cvstate { display:flex; align-items:center; gap:var(--space-3);
+    flex-wrap:wrap; margin-top:var(--space-3); font-size:12.5px; }
+  .cvstate[hidden] { display:none; }
+  .cvstate.bad { color:var(--color-accent-900); }
+  .cvstate .terms { display:flex; gap:5px; flex-wrap:wrap; }
+  .cvstate button { height:28px; padding:0 12px;
+    border:1px solid var(--color-divider); background:transparent; font:inherit;
+    font-size:12px; color:var(--color-text); cursor:pointer; }
+  .cvstate button:hover { background:color-mix(in srgb, var(--color-text) 7%, transparent); }
+  .cvhow { flex-basis:100%; margin:2px 0 0; font-size:11px; line-height:1.6;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .cvhow b { color:color-mix(in srgb, var(--color-text) 75%, transparent); font-weight:500; }
+  .cvhow em { font-style:normal; color:var(--color-accent-700); }
+
+  /* — the dial. `weekAt()` and `paintDial()` both measure the track's 10px
+       side padding, so that number is load-bearing, as are the 62px/34px bar
+       beds `drawDial()` scales its heights against. — */
+  .dial { margin:0; padding:var(--space-4); }
+  .dial[hidden] { display:none; }
+  .dhead { display:flex; align-items:baseline; gap:var(--space-4);
+    margin-bottom:var(--space-3); flex-wrap:wrap; }
+  .dhead h2 { margin:0; font-size:13px; letter-spacing:.08em;
+    text-transform:uppercase; }
+  .dsub { font-size:12px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .dsub button { border:0; background:none; padding:0 0 0 4px; font:inherit;
+    font-size:12px; color:var(--color-accent); cursor:pointer;
+    text-decoration:underline; text-underline-offset:3px; }
+  .dsub button[hidden] { display:none; }
+  .legend { margin-left:auto; display:flex; gap:var(--space-4); font-size:11px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .legend span { display:inline-flex; align-items:center; gap:5px; }
+  .legend i { width:8px; height:8px; display:inline-block; }
+  .track { position:relative; padding:12px 10px 8px; cursor:ew-resize;
+    touch-action:none; user-select:none; }
+  .bars { display:flex; gap:4px; align-items:stretch; }
+  .wk { flex:1; display:flex; flex-direction:column; min-width:0;
+    opacity:1; transition:opacity .2s ease; }
+  .wk.out { opacity:.32; }
+  .up { height:62px; display:flex; align-items:flex-end; }
+  .up b { display:block; width:100%; background:var(--up); }
+  .mid { height:1px; background:var(--color-divider); }
+  .dn { height:34px; }
+  .dn b { display:block; width:100%; background:var(--dn); }
+  /* A week the index could not read is hatched, not drawn as a zero. */
+  .up.blind, .dn.blind { background:repeating-linear-gradient(
+    -45deg, transparent 0 3px,
+    color-mix(in srgb, var(--color-text) 14%, transparent) 3px 4px); }
+  .tick { text-align:center; font-size:9.5px; margin-top:6px;
+    white-space:nowrap; overflow:hidden;
+    color:color-mix(in srgb, var(--color-text) 45%, transparent); }
+  .brush { position:absolute; top:8px; bottom:26px;
+    border:1px solid var(--color-accent);
+    background:color-mix(in srgb, var(--color-accent) 10%, transparent);
+    pointer-events:none; transition:left .16s ease, width .16s ease; }
+  /* At rest the brush spans every week, which is not a filter but the absence
+     of one. Tinting the whole chart then would read as a selection. */
+  .brush.all { background:transparent; }
+  .brush.all i { opacity:.45; }
+  .brush i { position:absolute; top:50%; margin-top:-13px; width:5px;
+    height:26px; background:var(--color-accent); }
+  .brush i.l { left:-3px; } .brush i.r { right:-3px; }
+  .blindnote { font-size:11px; margin:var(--space-2) 2px 0;
+    color:color-mix(in srgb, var(--color-text) 45%, transparent); }
+
+  /* — the results table — */
+  .rhead { display:flex; align-items:baseline; gap:var(--space-4);
+    padding-bottom:var(--space-3); flex-wrap:wrap; }
+  .rhead p { margin:0; font-size:13.5px; }
+  .rhead p b { font-weight:500; font-variant-numeric:tabular-nums; }
+  .sorts { margin-left:auto; display:flex; align-items:center;
+    gap:var(--space-2); }
+  .sorts > span { font-size:12px; }
+  .sorts button { border:0; background:transparent; padding:2px 0; font:inherit;
+    font-size:12.5px; cursor:pointer; border-bottom:1px solid transparent;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent);
+    transition:color .15s; }
+  .sorts button:hover { color:var(--color-accent); }
+  .sorts button[aria-pressed="true"] { color:var(--color-text); font-weight:500;
+    border-bottom-color:var(--color-accent); }
+  .scroll { overflow-x:auto; }
+  .table { width:100%; border-collapse:collapse; font-size:14px;
+    min-width:820px; }
+  .table th { text-align:left; font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; padding:var(--space-2);
+    color:color-mix(in srgb, var(--color-text) 60%, transparent);
+    border-bottom:1px solid var(--color-divider); }
+  .table td { padding:var(--space-3) var(--space-2); vertical-align:top;
+    border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+  .table tbody tr { transition:opacity .28s ease; }
+  .table tbody tr:hover { background:color-mix(in srgb, var(--color-text) 4%, transparent); }
+  /* Table rows cannot collapse their height the way the old list items did, so
+     a row that has left the result set fades and is then removed. */
+  .table tbody tr.gone { opacity:0; }
+  .table tbody tr:hover .apply,
+  .table tbody tr:focus-within .apply { opacity:1; }
+  .t a { color:var(--color-text); text-decoration:none; font-size:14px;
+    font-weight:500; display:block; text-wrap:pretty; }
+  .table tbody tr:hover .t a { color:var(--color-accent); }
+  .apply { font-size:12.5px; text-decoration:none; opacity:0;
+    transition:opacity .15s; white-space:nowrap; }
+  .num { font-variant-numeric:tabular-nums; }
+  .age { font-size:12.5px; text-align:right; white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .pay { font-size:12.5px; font-variant-numeric:tabular-nums; }
+  .pay.none { color:color-mix(in srgb, var(--color-text) 35%, transparent); }
+  .tag { display:inline-flex; align-items:center; font-size:11px;
+    letter-spacing:.02em; padding:3px 10px; border-radius:0; }
+  .tag.c-hybrid { background:var(--color-accent-100); color:var(--color-accent-800); }
+  .tag.c-onsite { background:var(--color-neutral-200); color:var(--color-neutral-800); }
+  .tag.c-remote { border:1px solid var(--color-accent); color:var(--color-accent-700); }
+
+  /* — the résumé match line and meter, added to a row only while a résumé
+       is loaded. The meter column is drawn only then. — */
+  .hits { display:flex; gap:5px; flex-wrap:wrap; margin-top:4px;
+    font-size:11.5px; }
+  .hits span { padding:1px 7px; background:var(--color-accent-100);
+    color:var(--color-accent-800); }
+  .hits .title { background:var(--color-accent); color:var(--color-bg); }
+  .hits .none { background:transparent;
+    color:color-mix(in srgb, var(--color-text) 45%, transparent); padding:1px 0; }
+  .mcol { display:none; }
+  .matched .mcol { display:table-cell; }
+  .meter { display:flex; align-items:center; gap:6px; }
+  .meter i { display:block; flex:1; height:4px; background:var(--color-neutral-300); }
+  .meter i b { display:block; height:100%; background:var(--color-accent); }
+  .meter em { font-style:normal; font-size:11px;
+    font-variant-numeric:tabular-nums;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+
+  /* — skeleton and empty state — */
+  .sk td { padding:var(--space-3) var(--space-2); }
+  .sk i { display:block; height:13px; background:var(--color-neutral-300);
+    animation:pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:.55; } 50% { opacity:.25; } }
+  .blank { margin-top:var(--space-6); padding:var(--space-8); text-align:center; }
+  .blank h4 { margin:0 0 var(--space-2); }
+  .blank p { font-size:13.5px; margin:0 auto var(--space-4); max-width:44ch;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+
+  /* — pagination — */
+  .foot { display:flex; align-items:center; gap:var(--space-4);
+    padding-top:var(--space-6); flex-wrap:wrap; font-size:12.5px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .foot .btn { margin-left:auto; }
+  .foot .btn[hidden] { display:none; }
+
+  /* — footer — */
+  footer { border-top:1px solid var(--color-divider); margin-top:var(--space-8); }
+  footer .in { max-width:1160px; margin:0 auto; padding:var(--space-6);
+    display:flex; gap:var(--space-6) var(--space-8); flex-wrap:wrap;
+    align-items:baseline; font-size:12.5px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  footer .brand { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:14px; letter-spacing:.02em;
+    color:var(--color-text); }
+  footer .r { margin-left:auto; }
+
+  /* — narrow — */
+  @media (max-width:820px) {
+    .board { grid-template-columns:minmax(0,1fr); gap:var(--space-6); }
+    .rail { position:static; }
+    .nav { gap:var(--space-4); flex-wrap:wrap; }
+    .nav .acts { width:100%; }
+    .title { padding-top:var(--space-6); }
+    .meta { margin-left:0; width:100%; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    * { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+  }
+</style>
+
+<div style="min-height:100vh;display:flex;flex-direction:column">
+
+  <header class="bar">
+    <nav class="nav">
+      <a class="nav-brand" href="./"><svg class="nav-mark" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 9 L38 9 A5 5 0 0 1 43 14 L43 34 A5 5 0 0 1 38 39 L22 39 A5 5 0 0 1 17 34 L17 29"/><path d="M17 19 L17 14 A5 5 0 0 1 22 9"/><path d="M3 10 L15 20"/><path d="M3 38 L15 28"/><circle cx="30" cy="24" r="3.4" fill="currentColor" stroke="none"/></svg>MUSTER</a>
+      <!-- The composition drew four destinations and two account actions. This
+           site is two pages, so it links the two that exist rather than
+           shipping dead anchors: the index, and the ingest-health console. -->
+      <a href="./" aria-current="page">Roles</a>
+      <a href="runs.html">Coverage</a>
+      <div class="acts" style="display:flex;align-items:center;gap:var(--space-2);margin-left:var(--space-4)">
+        <a class="btn btn-secondary" href="https://github.com/sidharthjoly/Muster">Method</a>
+      </div>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <div class="title">
+      <h1>Data &amp; AI roles</h1>
+      <span class="scope text-muted" id="scope">data &amp; AI &middot; Australia</span>
+      <div class="meta text-muted">
+        <span style="display:flex;align-items:baseline;gap:7px">
+          <span class="odo" id="odo" aria-hidden="true"></span>
+          <span class="odolabel" id="odolabel">roles in the index</span>
+        </span>
+        <span class="swept" id="swept"><i></i><span>reading the index&hellip;</span></span>
+      </div>
+      <div class="sr" id="live" aria-live="polite" role="status"></div>
+    </div>
+  </div>
+
+  <main>
+
+    <div class="find">
+      <div class="findbox">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input class="input" type="search" id="q" autocomplete="off" spellcheck="false"
+          placeholder="Search roles, employers or skills" aria-label="Search roles">
+        <button class="xq" id="xq" type="button" aria-label="Clear search">&times;</button>
+      </div>
+      <button type="button" class="btn btn-secondary" id="reset">Reset all</button>
+    </div>
+
+    <div class="board">
+
+      <aside class="rail">
+        <div>
+          <h6>Location</h6>
+          <div class="cities" id="cities"></div>
+        </div>
+
+        <div>
+          <h6>Work type</h6>
+          <div class="seg" id="works">
+            <button type="button" data-work="" aria-pressed="true">All</button>
+            <button type="button" data-work="hybrid" aria-pressed="false">Hybrid</button>
+            <button type="button" data-work="onsite" aria-pressed="false">On-site</button>
+            <button type="button" data-work="remote" aria-pressed="false">Remote</button>
+          </div>
+          <p class="note" id="worknote">Work type is the employer&rsquo;s own
+            <b>workplaceType</b> field, not a recruiter&rsquo;s tickbox.</p>
+        </div>
+
+        <div>
+          <h6>Salary</h6>
+          <label class="paid">
+            <input type="checkbox" id="paid">
+            <span>Published band only</span>
+            <em id="paidn"></em>
+          </label>
+          <p class="note" id="paidnote"></p>
+        </div>
+      </aside>
+
+      <div class="results">
+
+        <section class="cv blueprint" id="cv" hidden data-on="no" style="padding:var(--space-4)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <button class="cvopen" id="cvopen" type="button"
+                  aria-expanded="false" aria-controls="cvbody">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/>
+            </svg>
+            <span id="cvlabel">Match my r&eacute;sum&eacute;</span>
+            <span class="hint" id="cvhint">rank every open role against your own skills</span>
+            <span class="x" id="cvx" hidden>clear</span>
+          </button>
+
+          <div class="cvbody" id="cvbody" hidden>
+            <div class="drop" id="drop" tabindex="0" role="button"
+                 aria-label="Choose a r&eacute;sum&eacute; file">
+              <b>Drop a r&eacute;sum&eacute; here, or <u>choose a file</u></b>
+              <span class="fine">PDF or plain text &middot; or paste the text below</span>
+              <input type="file" id="cvfile" hidden
+                     accept=".pdf,.txt,.md,.text,text/plain,application/pdf">
+            </div>
+            <textarea class="cvta" id="cvta" spellcheck="false"
+              placeholder="&hellip;or paste your r&eacute;sum&eacute; text here"></textarea>
+            <p class="cvnote"><b>This stays in your browser.</b> The file is read by
+              this page and never uploaded &mdash; the site is static files on a CDN
+              and has no server to send it to. Nothing is saved; reload and it is
+              gone.</p>
+            <div class="cvstate" id="cvstate" hidden></div>
+          </div>
+        </section>
+
+        <figure class="dial blueprint" id="dial" hidden>
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="dhead">
+            <h2>Posted window &middot; drag to filter</h2>
+            <div class="dsub"><span id="dsub"></span><button type="button" id="allweeks" hidden>all weeks</button></div>
+            <div class="legend">
+              <span><i style="background:var(--up)"></i>opened</span>
+              <span><i style="background:var(--dn)"></i>closed</span>
+            </div>
+          </div>
+          <div class="track" id="track" tabindex="0" role="group"
+            aria-label="Week window. Arrow keys move it, shift with arrows resizes it, escape clears it.">
+            <div class="bars" id="bars"></div>
+            <div class="brush" id="brush"><i class="l"></i><i class="r"></i></div>
+          </div>
+          <p class="blindnote" id="blindnote"></p>
+        </figure>
+
+        <div>
+          <div class="rhead">
+            <p><b class="num" id="count">&mdash;</b> <span class="text-muted" id="countlabel">roles match</span></p>
+            <div class="sorts" id="sorts">
+              <span class="text-muted">Sort</span>
+              <button type="button" data-sort="newest" aria-pressed="true">Newest</button>
+              <button type="button" data-sort="relevance" aria-pressed="false">Best match</button>
+              <button type="button" data-sort="salary" aria-pressed="false">Salary</button>
+            </div>
+          </div>
+
+          <div class="scroll">
+            <table class="table" id="board">
+              <thead>
+                <tr>
+                  <th style="width:auto;min-width:260px">Role</th>
+                  <th style="width:134px">Employer</th>
+                  <th style="width:86px">Location</th>
+                  <th style="width:72px">Work</th>
+                  <th style="width:94px">Salary</th>
+                  <th style="width:66px;text-align:right">Posted</th>
+                  <th class="mcol" style="width:78px">Match</th>
+                  <th style="width:54px"></th>
+                </tr>
+              </thead>
+              <tbody id="rows">
+                <tr class="sk"><td colspan="8"><i></i></td></tr>
+                <tr class="sk"><td colspan="8"><i></i></td></tr>
+                <tr class="sk"><td colspan="8"><i></i></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="blank blueprint" id="empty" hidden>
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <h4 id="emptyhead">No matching roles</h4>
+            <p id="emptynote">Try widening the posted window or clearing a filter.</p>
+            <button type="button" class="btn btn-secondary" id="emptybtn">Reset all filters</button>
+          </div>
+
+          <div class="foot" id="foot"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="in">
+      <span class="brand">MUSTER</span>
+      <span>Read from employers&rsquo; own hiring systems. Apply links go to the employer.</span>
+      <span class="r" id="scopeout"></span>
+    </div>
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+
+// One page, two backends. Served by `muster.web` it queries /api/search
+// against FTS5; served as a static export (or opened as a file) it loads the
+// whole AU set once and filters in the browser. 3.4k rows is small enough that
+// a search library would be ceremony — and it is why the export is AU-only:
+// the full 51k index is 28MB.
+const STATIC = { on:false, jobs:[], data:[], exclude:[] };
+// Roles whose ad carried no text at all, so no vocabulary could be read
+// from them. They are in the list and in every filter; they just cannot
+// be ranked, and the footer says so rather than letting them look like
+// roles that were weighed and found wanting.
+let UNRANKABLE = 0;
+const PAGE = 50;
+const WEEKS = 16;
+
+// `a`/`b` are bar indexes into PULSE.weeks, 0 oldest. A full span means no date
+// filter at all rather than "the last sixteen weeks": the index holds roles
+// older than the chart is drawn to show, and quietly dropping them would make
+// the resting count a lie.
+const state = { q:'', cat:'data', city:'', work:'', paid:false, a:0, b:WEEKS - 1,
+                sort:'', offset:0 };
+// The sorts the query layer actually implements (search.ORDERS). `relevance`
+// needs an FTS expression to rank against, so it is offered only while the box
+// has something in it — search() silently falls back to newest otherwise.
+const SORTS = [['newest', 'Newest'], ['relevance', 'Best match'], ['salary', 'Salary']];
+let PULSE = null;              // { weeks:[{start,opened,closed}], closures_since }
+let total = 0;
+
+/* ---------- url state: a search is a link ---------- */
+
+function readURL() {
+  const u = new URLSearchParams(location.search);
+  state.q = u.get('q') || '';
+  state.cat = u.get('roles') === 'all' ? 'all' : 'data';
+  state.city = u.get('city') || '';
+  state.work = ['remote','hybrid','onsite'].includes(u.get('work')) ? u.get('work') : '';
+  // Old links still mean what they meant: `new=1` was "posted this week", which
+  // is the last bar of the dial.
+  if (u.get('new') === '1') { state.a = WEEKS - 1; state.b = WEEKS - 1; }
+  state.sort = SORTS.some(([k]) => k === u.get('sort')) ? u.get('sort') : '';
+  state.paid = u.get('pay') === '1';
+  const w = (u.get('w') || '').match(/^(\d+)-(\d+)$/);
+  if (w) {
+    state.a = Math.min(Math.max(+w[1], 0), WEEKS - 1);
+    state.b = Math.min(Math.max(+w[2], 0), WEEKS - 1);
+  }
+}
+
+function writeURL() {
+  const u = new URLSearchParams();
+  if (state.q) u.set('q', state.q);
+  if (state.cat === 'all') u.set('roles', 'all');
+  if (state.city) u.set('city', state.city);
+  if (state.work) u.set('work', state.work);
+  if (state.paid) u.set('pay', '1');
+  if (state.sort) u.set('sort', state.sort);
+  if (!whole()) u.set('w', lo() + '-' + hi());
+  const qs = u.toString();
+  history.replaceState(null, '', qs ? '?' + qs : location.pathname);
+}
+
+const lo = () => Math.min(state.a, state.b);
+const hi = () => Math.max(state.a, state.b);
+const whole = () => lo() === 0 && hi() === WEEKS - 1;
+const dirty = () => !!(state.q || state.city || state.work || state.paid || !whole());
+
+// The window is a pair of absolute dates, not an age. The export is read for
+// days after it is built, and "sixteen weeks ago" counted from the reader's
+// clock would slide off the bars it was drawn against.
+function window_() {
+  if (!PULSE || whole()) return null;
+  const from = PULSE.weeks[lo()].start;
+  const end = new Date(PULSE.weeks[hi()].start + 'T00:00:00Z');
+  end.setUTCDate(end.getUTCDate() + 7);
+  return { since:from, until:end.toISOString().slice(0, 10) };
+}
+
+// The public URL keeps friendly names; the query layer keeps its own.
+function params(offset = 0) {
+  const p = new URLSearchParams();
+  if (state.q) p.set('q', state.q);
+  if (state.cat === 'data') p.set('data_only', '1');
+  if (state.city) p.set('city', state.city);
+  if (state.work) p.set('remote', state.work);
+  if (state.paid) p.set('has_salary', '1');
+  const w = window_();
+  if (w) { p.set('since', w.since); p.set('until', w.until); }
+  // With no sort chosen, newest is what a hunter wants — except while they are
+  // typing, when best-match is.
+  p.set('sort', state.sort || (state.q ? 'relevance' : 'newest'));
+  p.set('offset', offset);
+  return p;
+}
+
+/* ---------- formatting ---------- */
+
+const esc = s => (s ?? '').toString().replace(/[<>&"]/g,
+  c => ({ '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;' }[c]));
+const n = v => (v ?? 0).toLocaleString();
+
+// The employer's own publish date, not first_seen_at — the latter only records
+// when this index noticed a role, which would read "this week" for every row.
+const daysAgo = j => {
+  const iso = j.posted_at || j.first_seen_at;
+  if (!iso) return null;
+  const d = Math.floor((Date.now() - new Date(iso.replace(' ', 'T'))) / 864e5);
+  return Number.isFinite(d) ? Math.max(d, 0) : null;
+};
+
+// Weeks, because the dial counts in weeks and two units on one row would make
+// the reader convert between them.
+const age = d => {
+  if (d === null) return '';
+  const w = Math.floor(d / 7);
+  return w === 0 ? 'this week' : w === 1 ? '1 wk' : w < 53 ? w + ' wks' : '1 yr+';
+};
+
+const money = j => {
+  if (!j.salary_min) return null;
+  const f = v => v >= 1000 ? Math.round(v / 1000) + 'k' : v;
+  const cur = (j.salary_currency || '').replace('AUD', 'A$').replace('USD', 'US$');
+  return cur + (j.salary_max && j.salary_max !== j.salary_min
+    ? f(j.salary_min) + '–' + f(j.salary_max) : f(j.salary_min));
+};
+
+const WORK = { remote:'Remote', hybrid:'Hybrid', onsite:'On-site' };
+
+// Vendors hand back city names in whatever case the recruiter typed, so the
+// index holds "MOUNT WAVERLEY" next to "Sydney". Fix it for display only.
+const place = s => !s ? '' : s === s.toUpperCase() && s.length > 3
+  ? s.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()) : s;
+
+const key = j => `${j.ats_vendor}/${j.board_token}/${j.external_id}`;
+
+function rowHTML(j) {
+  const where = place(j.location_city) || place(j.location_raw) || 'Australia';
+  const sal = money(j);
+  // Salary is rendered wherever the employer published one. It is also a
+  // filter now, which the rail warns about: only ~57 of 3,341 open AU roles
+  // carry a structured band, so the control hides most of the index.
+  const url = esc(j.apply_url);
+  // The match cell is emitted empty rather than dropped when no resume is
+  // loaded: a column that came and went would reflow every other one.
+  return `<td class="t">
+      <a href="${url}" target="_blank" rel="noopener">${esc(j.title)}</a>${
+        CV.on ? hitsHTML(j) : ''}
+    </td>
+    <td>${esc(j.company || '')}</td>
+    <td class="text-muted">${esc(where)}</td>
+    <td>${WORK[j.remote_type]
+      ? `<span class="tag c-${j.remote_type}">${WORK[j.remote_type]}</span>` : ''}</td>
+    <td class="pay${sal ? '' : ' none'}">${sal ? esc(sal) : '&mdash;'}</td>
+    <td class="age">${esc(age(daysAgo(j)))}</td>
+    <td class="mcol">${CV.on ? meterHTML(j) : ''}</td>
+    <td style="text-align:right"><a class="apply" href="${url}"
+      target="_blank" rel="noopener">Apply &rarr;</a></td>`;
+}
+
+// The third line and the meter, added to a row only while a resume is loaded.
+// Both name what they are made of: the terms that actually matched, strongest
+// first, and a bar that is explicitly relative to the best match in the list.
+// A score with nothing behind it is the thing this feature is trying not to be.
+function hitsHTML(j) {
+  const m = j._m || { hits:[], role:null, stretch:false };
+  const parts = [];
+  if (m.role) parts.push(`<span class="title">${esc(m.role)}</span>`);
+  for (const h of m.hits.slice(0, 4)) parts.push(`<span>${esc(h)}</span>`);
+  if (m.stretch) parts.push('<span class="none">a level up</span>');
+  if (!parts.length) parts.push('<span class="none">no shared skills</span>');
+  const req = reqLine(j);
+  if (req) parts.push(`<span class="none">${req}</span>`);
+  return `<div class="hits">${parts.join('')}</div>`;
+}
+
+function meterHTML(j) {
+  const rel = (j._m && j._m.rel) || 0;
+  return `<div class="meter" title="${Math.round(rel * 100)} out of 100 against the
+best match in this list — a share of vocabulary, not a chance of being hired">
+    <i><b style="width:${Math.round(rel * 100)}%"></b></i>
+    <em>${Math.round(rel * 100)}</em>
+  </div>`;
+}
+
+/* ---------- the browser-side backend ---------- */
+
+async function detectStatic() {
+  try {
+    const r = await fetch('data/manifest.json', { cache:'no-store' });
+    if (!r.ok) return false;
+    const m = await r.json();
+    // The data-role terms ship with the export rather than being retyped here:
+    // the server filter was subtly wrong once ("Senior Tax Analyst"), and two
+    // copies of it would drift apart on the next fix.
+    STATIC.data = m.data_terms; STATIC.exclude = m.analyst_exclude;
+    STATIC.jobs = await (await fetch('data/jobs.json')).json();
+    STATIC.on = true;
+    // An export built before the dial existed has no pulse; the page drops the
+    // chart rather than throwing on the way to drawing it.
+    if (m.pulse && m.pulse.weeks) PULSE = m.pulse;
+    UNRANKABLE = m.unrankable || 0;
+    wireCV(m);
+    return true;
+  } catch { return false; }
+}
+
+const pad = t => ' ' + (t || '').toLowerCase() + ' ';
+const isDataRole = t => {
+  const s = pad(t);
+  if (STATIC.data.some(x => s.includes(x))) return true;
+  return s.includes('analyst') && !STATIC.exclude.some(x => s.includes(x));
+};
+
+const posted = j => (j.posted_at || j.first_seen_at || '').toString()
+  .replace(' ', 'T').slice(0, 10);
+
+function searchLocal(p) {
+  const q = (p.get('q') || '').toLowerCase().trim();
+  // FTS5 prefix-matches each term; substring matching here is slightly looser.
+  const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+  const since = p.get('since'), until = p.get('until');
+
+  const rows = STATIC.jobs.filter(j => {
+    if (p.get('data_only') && !isDataRole(j.title)) return false;
+    if (p.get('remote') && j.remote_type !== p.get('remote')) return false;
+    if (p.get('city') && j.location_city !== p.get('city')) return false;
+    if (p.get('has_salary') && !j.salary_min) return false;
+    // String comparison on YYYY-MM-DD, the same shape the SQL uses, so both
+    // backends put a role in the same week.
+    if (since || until) {
+      const d = posted(j);
+      if (!d || (since && d < since) || (until && d >= until)) return false;
+    }
+    if (terms.length) {
+      // `kw` is the role's whole vocabulary, exported in place of a prose
+      // excerpt. An export built before that change still carries `snippet`,
+      // so both are searched and an old snapshot keeps working.
+      const hay = `${j.title} ${j.company} ${j.kw || j.snippet || ''}`.toLowerCase();
+      if (!terms.every(t => hay.includes(t))) return false;
+    }
+    return true;
+  });
+
+  const when = j => new Date(posted(j)).getTime() || 0;
+  // A loaded resume is a sort, not a filter: nothing is removed, because a role
+  // sharing no vocabulary with a resume is not thereby a role the reader cannot
+  // do. It sinks, and says why on its own row.
+  if (CV.on) {
+    rankAll(rows);
+    rows.sort((a, b) => b._m.score - a._m.score || when(b) - when(a));
+    const ranked = collapseReqs(rows);
+    const off = +p.get('offset') || 0;
+    // `total` and `matched` count what the list actually shows, so the footer
+    // is counting the same things the rows below it are. The rail is not
+    // collapsed: it is a map of where the roles are, and roles are what it
+    // should be counting.
+    return { total:ranked.length, matched:ranked.filter(j => j._m.score > 0).length,
+             results:ranked.slice(off, off + PAGE),
+             facets:off ? null : localFacets() };
+  }
+  if (p.get('sort') === 'salary') {
+    // NULLS LAST, matching search.ORDERS: a role with no band sinks rather
+    // than sorting as a zero.
+    rows.sort((a, b) => (b.salary_max || -1) - (a.salary_max || -1) || when(b) - when(a));
+  } else if (p.get('sort') === 'relevance' && terms.length) {
+    // The server ranks with FTS5 bm25. Approximated here as "how many query
+    // terms hit the title", which is the part of bm25 a reader would notice.
+    const score = j => terms.filter(t => j.title.toLowerCase().includes(t)).length;
+    rows.sort((a, b) => score(b) - score(a) || when(b) - when(a));
+  } else {
+    rows.sort((a, b) => when(b) - when(a));
+  }
+
+  const off = +p.get('offset') || 0;
+  return { total:rows.length, results:rows.slice(off, off + PAGE),
+           facets:off ? null : localFacets() };
+}
+
+// Counted over the page's scope, not the current filters: the rail is a map of
+// where the roles are, and a chosen city that zeroed every other city would
+// stop being a map the moment it became useful.
+function localFacets() {
+  const scope = STATIC.jobs.filter(j => state.cat !== 'data' || isDataRole(j.title));
+  const tally = (get) => {
+    const c = new Map();
+    for (const j of scope) { const v = get(j); if (v) c.set(v, (c.get(v) || 0) + 1); }
+    return [...c].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ key:k, n:v }));
+  };
+  return { cities:tally(j => j.location_city).slice(0, 30),
+           remote:tally(j => j.remote_type), scope:scope.length,
+           salaried:scope.filter(j => j.salary_min).length };
+}
+
+/* ---------- resume matching ---------- */
+
+/* Static mode only, and deliberately.
+
+   Ranking needs every role's skills against one resume in a single pass, which
+   only the static path has: `searchLocal` already holds all 8,852 rows in
+   memory, while `/api/search` answers 50 at a time out of Postgres and would
+   have to be given the resume to rank server-side — which is the one thing this
+   feature must never do. So the panel is gated on `STATIC.on`, and the served
+   page simply does not offer it. That keeps the resume on the reader's machine
+   by construction rather than by promise.
+
+   What is scored is the `sk` column: a closed skill vocabulary matched against
+   each ad's full description at export time. `kw` cannot do this job — it drops
+   any term more than 4% of the corpus carries, which is exactly where `python`
+   and `aws` live. See `muster/skills.py`. */
+
+const CV = { on:false, skills:new Set(), roles:[], level:null, hasText:false };
+let SKILLMATCH = null;   // compiled vocabulary, built once from the manifest
+let IDF = {};            // slug -> how much a match on it is worth
+
+// A match on a term three roles ask for says far more than a match on one a
+// thousand ask for. Without this, `python`, `excel` and `sql` — which a data
+// resume and a tenth of the index both carry — decide every ranking, and the
+// order reads as arbitrary. `+1` keeps a vocabulary term the corpus happens
+// never to use from dividing by zero.
+function buildIDF(df, n) {
+  IDF = {};
+  for (const slug of Object.keys(df)) IDF[slug] = Math.log(n / (df[slug] + 1));
+}
+
+// The ad side of this ran in Python at export time. This is the resume side of
+// the same function, over text that must not leave the page — so the patterns
+// are shipped in the manifest rather than retyped here, for the reason
+// `data_terms` is: two copies of a matching rule drift, and a form one side
+// knows and the other does not is a match that silently never happens.
+function compileSkills(m) {
+  const rx = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const forms = [];
+  for (const [slug, list] of Object.entries(m.skill_forms || {})) {
+    const alts = [...list].sort((a, b) => b.length - a.length).map(rx).join('|');
+    forms.push([slug, new RegExp(m.skill_edge + '(?:' + alts + ')' + m.skill_tail, 'i')]);
+  }
+  const sharp = Object.entries(m.skill_sharp || {})
+    .map(([slug, src]) => [slug, new RegExp(src, 'i')]);
+  return { forms, sharp };
+}
+
+function detectSkills(text) {
+  const found = new Set();
+  if (!text || !SKILLMATCH) return found;
+  const low = text.toLowerCase();
+  for (const [slug, re] of SKILLMATCH.forms) if (re.test(low)) found.add(slug);
+  for (const [slug, re] of SKILLMATCH.sharp) if (re.test(low)) found.add(slug);
+  return found;
+}
+
+const unpackSk = j => (j.sk || '').split(' ').filter(Boolean);
+
+/* ---- what the resume says it is ---- */
+
+// Matched as phrases against the job title, longest first, so "machine learning
+// engineer" wins over the "engineer" inside it.
+const ROLES = [
+  'machine learning engineer', 'machine learning scientist', 'analytics engineer',
+  'business intelligence', 'data scientist', 'data engineer', 'data analyst',
+  'data architect', 'data manager', 'research scientist', 'decision scientist',
+  'quantitative analyst', 'business analyst', 'platform engineer',
+  'software engineer', 'product manager', 'bi developer', 'bi analyst',
+  'ml engineer', 'statistician', 'actuary', 'economist',
+].sort((a, b) => b.length - a.length);
+
+// Explicit words only. Years of experience are not read: a resume states them
+// in a dozen formats and gets them wrong, and a mis-read level is worse than
+// no level, because it silently reorders everything.
+const LEVELS = [
+  ['graduate', 'intern', 'internship', 'trainee', 'cadet', 'placement'],
+  ['junior', 'associate', 'entry level'],
+  [],                                                   // mid: the unmarked case
+  ['senior', 'snr'],
+  ['lead', 'principal', 'staff engineer', 'manager'],
+  ['head of', 'director', 'chief', 'vp ', 'vice president', 'general manager'],
+];
+
+// For a job title. Four words, every one of them about the job, so the most
+// senior word present is the level being advertised.
+const levelOf = text => {
+  const low = ' ' + (text || '').toLowerCase() + ' ';
+  let best = null;
+  LEVELS.forEach((words, i) => { if (words.some(w => low.includes(w))) best = i; });
+  return best;
+};
+
+// For a resume, which is not a job title and breaks when read like one. Taking
+// the most senior word anywhere in two pages of career history made every data
+// resume Principal, because every data resume contains "principal component
+// analysis" — and the stretch penalty then could not fire at all, since it
+// needs a job two rungs above the reader and the scale stops one rung up.
+// "leadership" and "internal" were doing the same damage more quietly.
+//
+// So the CV side looks for the shape a resume states its own level in: a level
+// word beside a role word. "Graduate data scientist", "seeking junior roles".
+// When the resume never says, this reads null and nothing is penalised, which
+// is the honest answer and the one the old code could not give.
+// `ROLES` names job titles; a resume as often names the field -- "Head of Data
+// Science", "graduate analytics role" -- so the anchors add the field names and
+// the bare words a resume uses to say it is describing a job at all. These
+// widen the level read only; title scoring still uses `ROLES` alone.
+const CV_ANCHORS = [
+  ...ROLES, 'data science', 'data analytics', 'analytics',
+  'role', 'roles', 'position', 'positions',
+].sort((a, b) => b.length - a.length);
+
+// Sixteen characters of slack: "junior data science roles" fits, and
+// "principal component analysis." cannot reach whatever the next sentence says.
+const CV_NEAR = 16;
+
+const CV_LEVEL = (() => {
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const anchors = CV_ANCHORS.map(esc).join('|');
+  // Word-ish, so "leadership" is not `lead`, "internal" is not `intern` and
+  // "graduated" is not `graduate` — the substring matching was half the bug.
+  const edge = '(?:^|[^a-z])';
+  const tail = '(?![a-z])';
+  const gap = `[^\\n]{0,${CV_NEAR}}`;
+  return LEVELS.map(words => {
+    if (!words.length) return null;                     // mid is never claimed
+    const lv = words.slice().sort((a, b) => b.length - a.length).map(esc).join('|');
+    return new RegExp(
+      `${edge}(?:${lv})${tail}${gap}${edge}(?:${anchors})${tail}`
+      + `|${edge}(?:${anchors})${tail}${gap}${edge}(?:${lv})${tail}`, 'i');
+  });
+})();
+
+// Highest wins, as on the title side: a resume that has been junior and is now
+// senior is senior. The risk this keeps is a senior colleague named in passing.
+const cvLevelOf = text => {
+  const low = ' ' + (text || '').toLowerCase() + ' ';
+  let best = null;
+  CV_LEVEL.forEach((re, i) => { if (re && re.test(low)) best = i; });
+  return best;
+};
+
+function readCV(text) {
+  CV.skills = detectSkills(text);
+  const low = (text || '').toLowerCase();
+  CV.roles = ROLES.filter(r => low.includes(r));
+  CV.level = cvLevelOf(text);
+  CV.hasText = !!(text || '').trim();
+  CV.on = CV.hasText && (CV.skills.size > 0 || CV.roles.length > 0);
+}
+
+/* ---- scoring ---- */
+
+// A title match is worth about one uncommon skill — enough that a Data Engineer
+// role outranks a Data Scientist role that happens to share three common tools,
+// not so much that it buries a role whose whole stack the reader has.
+const TITLE_WEIGHT = 4.2;
+
+// A graduate resume matched against "Head of Data Science" shares python and
+// sql with it and would otherwise rank it first. Applied only where the resume
+// states a level and the gap is two rungs or more, and shown on the row rather
+// than applied silently — the reader may well want to see the stretch roles.
+const STRETCH = 0.55;
+
+function scoreJob(j) {
+  let score = 0;
+  const hits = [];
+  for (const slug of unpackSk(j)) {
+    if (!CV.skills.has(slug)) continue;
+    score += IDF[slug] || 0;
+    hits.push(slug);
+  }
+  hits.sort((a, b) => (IDF[b] || 0) - (IDF[a] || 0));
+
+  const title = (j.title || '').toLowerCase();
+  const role = CV.roles.find(r => title.includes(r)) || null;
+  if (role) score += TITLE_WEIGHT;
+
+  const jl = levelOf(j.title);
+  const stretch = CV.level !== null && jl !== null && jl - CV.level >= 2;
+  if (stretch) score *= STRETCH;
+
+  return { score, hits, role, stretch };
+}
+
+// The denominator for the meter: the best score anything actually got, so the
+// bar is "how this role compares with the best match in the list" rather than a
+// percentage of some absolute the score has no claim to.
+function rankAll(rows) {
+  let top = 0;
+  for (const j of rows) {
+    j._m = scoreJob(j);
+    if (j._m.score > top) top = j._m.score;
+  }
+  for (const j of rows) j._m.rel = top > 0 ? j._m.score / top : 0;
+  return rows;
+}
+
+/* ---- the requisition signals, in place of odds ---- */
+
+// Deliberately not a probability. This index has never observed an application
+// or a hire, and has watched closures for days rather than months, so there is
+// nothing here that could support a number like "62% likely". What it has
+// actually seen is how long a req has been open and how many identical ones the
+// same board is carrying — both of which a reader can act on without being told
+// a fiction.
+// One row per distinct opening — which the default list deliberately does not
+// do. The index's identity is the ATS's own requisition id, so two reqs with the
+// same title on one board are two records and the list shows two rows; that is
+// the claim the whole project rests on. A ranking is a different lens over the
+// same records: every slot in it should be a distinct thing to apply to, and two
+// adjacent identical rows each captioned "2 identical reqs" is a caption
+// describing what the reader can already see. So the index keeps its identity
+// and the ranking collapses, with the count moving onto the row that survives.
+//
+// Expects `rows` already sorted, so the first member of each group is its
+// best-ranked one and Map insertion order comes out ranked too.
+function collapseReqs(rows) {
+  const norm = t => (t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const groups = new Map();
+  for (const j of rows) {
+    const k = j.board_token + '|' + norm(j.title);
+    const g = groups.get(k);
+    if (g) g.n++;
+    else groups.set(k, { rep:j, n:1 });
+  }
+  const out = [];
+  for (const g of groups.values()) {
+    // Written on every pass, including where it is 1. `openings` lives on the
+    // shared job object next to `_m`, so a row that represented a group under
+    // one filter would otherwise carry that stale count into the next search
+    // where it represents only itself.
+    g.rep.openings = g.n;
+    out.push(g.rep);
+  }
+  return out;
+}
+
+function reqLine(j) {
+  // Counted over the exported slice, which is open AU roles — so it is
+  // "openings in Australia on this board", not across the employer's world.
+  const n = j.openings || 1;
+  return n > 1 ? `<b>${n}</b> openings` : '';
+}
+
+
+/* ---- getting the text out of a file ---- */
+
+// Loaded only when a PDF is actually dropped. The page ships with no
+// dependencies and has to work opened from disk; a parser for a format most
+// readers will not use should not be in the cost of loading the list. If the
+// CDN is blocked or offline this fails softly and the paste box is still there,
+// which is why the textarea is not hidden behind the drop zone.
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+let pdfLoading = null;
+
+function loadPDFJS() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pdfLoading) return pdfLoading;
+  pdfLoading = new Promise((ok, fail) => {
+    const el = document.createElement('script');
+    el.src = PDFJS + 'pdf.min.js';
+    el.onload = () => {
+      if (!window.pdfjsLib) return fail(new Error('pdf.js did not register'));
+      // Without an explicit worker the library tries to resolve one relative to
+      // this page, 404s, and reports it as a malformed PDF — which sends the
+      // reader off debugging their file instead of their network.
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+      ok(window.pdfjsLib);
+    };
+    el.onerror = () => fail(new Error('pdf.js could not be reached'));
+    document.head.append(el);
+  });
+  return pdfLoading;
+}
+
+async function pdfText(file) {
+  const lib = await loadPDFJS();
+  const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pages = [];
+  // A resume is one or two pages; the cap is for the reader who drops a thesis.
+  for (let i = 1; i <= Math.min(doc.numPages, 12); i++) {
+    const page = await doc.getPage(i);
+    const c = await page.getTextContent();
+    // Items carry no spaces of their own — joining without one glues "Python"
+    // to the next run and the vocabulary stops matching anything.
+    pages.push(c.items.map(x => x.str).join(' '));
+  }
+  return pages.join('\n');
+}
+
+async function readFile(file) {
+  if (!file) return '';
+  const pdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if (pdf) return pdfText(file);
+  if (file.size > 2e6) throw new Error('that file is larger than any resume');
+  return file.text();
+}
+
+/* ---- the panel ---- */
+
+function cvSay(html, bad = false) {
+  const el = $('#cvstate');
+  el.hidden = !html;
+  el.className = 'cvstate' + (bad ? ' bad' : '');
+  el.innerHTML = html;
+  const btn = el.querySelector('button');
+  if (btn) btn.onclick = clearCV;
+}
+
+function applyCV(text) {
+  readCV(text);
+  cvGen++;
+  if (!CV.hasText) { cvSay(''); $('#cv').dataset.on = 'no'; $('#cvx').hidden = true; load(); return; }
+
+  if (!CV.on) {
+    cvSay('Nothing in that text matched the skill vocabulary or a role title, '
+      + 'so there is nothing to rank on. If it came from a PDF, the file may be '
+      + 'a scan rather than text &mdash; paste the text instead.', true);
+    $('#cv').dataset.on = 'no';
+    $('#cvx').hidden = true;
+    load();
+    return;
+  }
+
+  // Named back to the reader, strongest first, so a wrong read is visible
+  // before it silently reorders eight thousand rows.
+  const shown = [...CV.skills].sort((a, b) => (IDF[b] || 0) - (IDF[a] || 0));
+  const role = CV.roles.length
+    ? `<span class="term">${esc(CV.roles[0])}</span>` : '';
+  const lvl = CV.level !== null && LEVELS[CV.level].length
+    ? `<span class="term">${esc(LEVELS[CV.level][0])}</span>` : '';
+  cvSay(`Read <b>${shown.length}</b> skill${shown.length === 1 ? '' : 's'}:
+    <span class="terms">${role}${lvl}${
+      shown.map(t => `<span class="term">${esc(t)}</span>`).join('')}</span>
+    <button type="button">Clear</button>
+    <p class="cvhow">Roles are <b>ranked, not filtered</b> — nothing is hidden. A
+      role scores on the terms above that its ad also uses, with rarer ones
+      counting for more: matching <em>dbt</em> says more than matching
+      <em>python</em>. The number on each row is relative to the best match in
+      the list, not a chance of being hired &mdash; this index has never seen an
+      application or a hire, so it has nothing to base one on.</p>`);
+  $('#cv').dataset.on = 'yes';
+  $('#cvx').hidden = false;
+  $('#cvlabel').textContent = 'Ranked against your resume';
+  $('#cvhint').textContent = `${shown.length} skills read`;
+  load();
+}
+
+function clearCV() {
+  cvGen++;
+  $('#cvta').value = '';
+  CV.on = false; CV.skills = new Set(); CV.roles = []; CV.level = null; CV.hasText = false;
+  // `_m` and `openings` are written onto the job objects themselves, and the
+  // paths that read them all re-rank first, so nothing stale is rendered today.
+  // Dropping them here is what keeps that true: it makes "these fields belong
+  // to the resume currently loaded" an invariant of the objects rather than a
+  // property of which call sites happen to exist.
+  for (const j of STATIC.jobs) { delete j._m; delete j.openings; }
+  $('#cv').dataset.on = 'no';
+  $('#cvx').hidden = true;
+  $('#cvlabel').innerHTML = 'Match my r&eacute;sum&eacute;';
+  $('#cvhint').textContent = 'rank every open role against your own skills';
+  cvSay('');
+  load();
+}
+
+function wireCV(m) {
+  SKILLMATCH = compileSkills(m);
+  buildIDF(m.skill_df || {}, Math.max(STATIC.jobs.length, 1));
+
+  // Only where there is a corpus to rank. An export built before the skill
+  // column existed has no `skill_forms`, and the panel stays hidden rather
+  // than offering a match it cannot compute.
+  if (!m.skill_forms || !STATIC.jobs.length) return;
+  $('#cv').hidden = false;
+
+  const open = () => {
+    const was = $('#cvbody').hidden;
+    $('#cvbody').hidden = !was;
+    $('#cvopen').ariaExpanded = String(was);
+    if (was) $('#cvta').focus();
+  };
+  $('#cvopen').onclick = e => {
+    // The "clear" affordance lives inside the toggle, so it has to win.
+    if (e.target.id === 'cvx') { clearCV(); return; }
+    open();
+  };
+
+  const drop = $('#drop'), file = $('#cvfile');
+  drop.onclick = () => file.click();
+  drop.onkeydown = e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click(); }
+  };
+
+  async function take(f) {
+    if (!f) return;
+    cvSay(`Reading <b>${esc(f.name)}</b>&hellip;`);
+    try {
+      const text = await readFile(f);
+      if (!text.trim()) throw new Error('no text could be read from that file');
+      $('#cvta').value = text;
+      applyCV(text);
+    } catch (err) {
+      cvSay(`Could not read that file &mdash; ${esc(err.message || 'unknown error')}.
+        Paste the text into the box instead.`, true);
+    }
+  }
+
+  file.onchange = () => { take(file.files[0]); file.value = ''; };
+  for (const ev of ['dragenter', 'dragover'])
+    drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); });
+  for (const ev of ['dragleave', 'drop'])
+    drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); });
+  drop.addEventListener('drop', e => take(e.dataTransfer.files[0]));
+
+  let cvTimer;
+  $('#cvta').oninput = e => {
+    clearTimeout(cvTimer);
+    const text = e.target.value;
+    cvTimer = setTimeout(() => applyCV(text), 300);
+  };
+}
+
+/* ---------- the dial ---------- */
+
+const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const stamp = iso => {
+  const d = new Date(iso + 'T00:00:00Z');
+  return d.getUTCDate() + ' ' + MONTH[d.getUTCMonth()];
+};
+
+function drawDial() {
+  if (!PULSE) return;
+  $('#dial').hidden = false;
+  const w = PULSE.weeks;
+  const maxUp = Math.max(1, ...w.map(x => x.opened));
+  const maxDn = Math.max(1, ...w.map(x => x.closed));
+  // A week that ended before the first sweep has no closure reading at all.
+  // Drawing it as a zero-height bar would say "nothing closed", which is a
+  // claim the index is not in a position to make.
+  const since = PULSE.closures_since || '9999-12-31';
+  // Nothing is known about a week that began after the last sweep. Today that
+  // is the current week, which would otherwise draw as a confident zero at the
+  // very edge the reader looks at first.
+  const seen = PULSE.observed_to || '9999-12-31';
+  // Compared on the week's *end*: the week the index booted in is partly
+  // observed, and hiding it would throw away closures that were really seen.
+  const ends = iso => {
+    const d = new Date(iso + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 7);
+    return d.toISOString().slice(0, 10);
+  };
+
+  $('#bars').innerHTML = w.map((x, i) => {
+    const blind = ends(x.start) <= since;
+    const unread = x.start > seen;
+    const tip = unread ? `${stamp(x.start)} — not swept yet`
+      : `${stamp(x.start)} — ${x.opened} opened${
+          blind ? ', closures not yet watched' : ', ' + x.closed + ' closed'}`;
+    return `<div class="wk" data-i="${i}" title="${tip}">
+      <span class="up${unread ? ' blind' : ''}">${unread ? ''
+        : `<b style="height:${Math.round(x.opened / maxUp * 62)}px"></b>`}</span>
+      <span class="mid"></span>
+      <span class="dn${blind || unread ? ' blind' : ''}">${blind || unread ? ''
+        : `<b style="height:${Math.round(x.closed / maxDn * 34)}px"></b>`}</span>
+      <span class="tick">${i % 4 === 0 || i === w.length - 1 ? stamp(x.start) : ''}</span>
+    </div>`;
+  }).join('');
+
+  const blind = w.filter(x => ends(x.start) <= since).length;
+  const unread = w.filter(x => x.start > seen).length;
+  const said = [];
+  if (blind) said.push(`Closures counted from ${stamp(since)}, when the index `
+    + `started watching — the ${blind} week${blind === 1 ? '' : 's'} before that `
+    + `show openings only.`);
+  if (unread) said.push(`The last sweep was ${stamp(seen)}, so the `
+    + `${unread === 1 ? 'week' : unread + ' weeks'} after it ${
+        unread === 1 ? 'is' : 'are'} hatched rather than empty: nothing has `
+    + `looked at ${unread === 1 ? 'it' : 'them'} yet.`);
+  $('#blindnote').textContent = said.join(' ');
+  paintDial();
+}
+
+function paintDial() {
+  if (!PULSE) return;
+  const a = lo(), b = hi(), span = b - a + 1;
+  for (const el of document.querySelectorAll('.wk'))
+    el.classList.toggle('out', !whole() && (+el.dataset.i < a || +el.dataset.i > b));
+  // Percentages of the padded inner track, matching weekAt() exactly so the
+  // brush lands where the pointer was released.
+  $('#brush').style.left = `calc(10px + ${a / WEEKS} * (100% - 20px))`;
+  $('#brush').style.width = `calc(${span / WEEKS} * (100% - 20px))`;
+  $('#brush').classList.toggle('all', whole());
+
+  const from = PULSE.weeks[a].start, to = PULSE.weeks[b].start;
+  $('#dsub').textContent = whole()
+    ? 'Every open role in the index, however old. Drag to narrow to a span of weeks.'
+    : `Posted ${stamp(from)}${span === 1 ? '' : ' – ' + stamp(to)} — ${span} week${
+        span === 1 ? '' : 's'}.`;
+  $('#allweeks').hidden = whole();
+}
+
+function weekAt(clientX) {
+  const r = $('#track').getBoundingClientRect();
+  const inner = Math.max(r.width - 20, 1);
+  return Math.min(WEEKS - 1,
+    Math.max(0, Math.floor((clientX - r.left - 10) / (inner / WEEKS))));
+}
+
+let dragging = false;
+
+$('#track').onpointerdown = e => {
+  if (!PULSE) return;
+  $('#track').setPointerCapture?.(e.pointerId);
+  dragging = true;
+  state.a = state.b = weekAt(e.clientX);
+  paintDial();
+};
+$('#track').onpointermove = e => {
+  if (!dragging) return;
+  const w = weekAt(e.clientX);
+  if (w === state.b) return;
+  state.b = w;
+  paintDial();
+};
+const endDrag = () => { if (dragging) { dragging = false; apply(); } };
+$('#track').onpointerup = endDrag;
+$('#track').onpointercancel = endDrag;
+
+// The brush is two handles, which no single ARIA control models well. Arrows
+// move the window, shift-arrows resize it, escape clears it — so the dial is
+// reachable without a pointer even though it is not a slider.
+$('#track').onkeydown = e => {
+  if (!PULSE) return;
+  const step = { ArrowLeft:-1, ArrowRight:1 }[e.key];
+  if (e.key === 'Escape') { state.a = 0; state.b = WEEKS - 1; }
+  else if (step && whole()) {
+    // From the resting full span there is nowhere to move to, so the first
+    // arrow press starts a window at the most recent week instead of doing
+    // nothing and reading as a dead control.
+    state.a = state.b = WEEKS - 1;
+  } else if (step) {
+    const a = lo(), b = hi();
+    if (e.shiftKey) { state.a = a; state.b = Math.min(WEEKS - 1, Math.max(a, b + step)); }
+    else if (a + step >= 0 && b + step <= WEEKS - 1) { state.a = a + step; state.b = b + step; }
+    else return;
+  } else return;
+  e.preventDefault();
+  paintDial();
+  apply();
+};
+
+$('#allweeks').onclick = () => { state.a = 0; state.b = WEEKS - 1; paintDial(); apply(); };
+
+/* ---------- the odometer ---------- */
+
+const TEN = '<u><i>0</i><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>6</i><i>7</i><i>8</i><i>9</i></u>';
+
+function odometer(v) {
+  const s = String(v), el = $('#odo');
+  if (el.children.length !== s.length)
+    el.innerHTML = s.split('').map(() => `<span>${TEN}</span>`).join('');
+  [...s].forEach((ch, i) =>
+    el.children[i].firstElementChild.style.transform = `translateY(-${+ch}em)`);
+}
+
+/* ---------- rows, which narrow in place ---------- */
+
+const live = new Map();        // key -> <tr>, everything currently mounted
+
+// Bumped whenever the resume changes, including to nothing. A row that is
+// already mounted is normally reused untouched, which is right for a filter —
+// but loading a resume rewrites every row's contents rather than the set of
+// them, and a kept row would otherwise hold the markup it was built with:
+// no match line while ranked, or a stale one after clearing.
+let cvGen = 0;
+
+function paintRows(jobs, append) {
+  const list = $('#rows');
+  if (!append) list.querySelectorAll('.sk').forEach(el => el.remove());
+  const next = new Set(jobs.map(key));
+
+  if (!append) {
+    for (const [k, el] of live) {
+      if (next.has(k)) continue;
+      live.delete(k);
+      el.classList.add('gone');
+      // Belt and braces: transitionend does not fire if the element is never
+      // laid out (a background tab), and a leaked ghost would push the list down.
+      // A table row cannot collapse its own height the way the old list item
+      // did, so the row fades and is dropped when the fade ends.
+      el.addEventListener('transitionend', e => {
+        if (e.propertyName === 'opacity') el.remove();
+      });
+      setTimeout(() => el.remove(), 700);
+    }
+  }
+
+  const fresh = [];
+  for (const j of jobs) {
+    const k = key(j);
+    let el = live.get(k);
+    if (!el) {
+      el = document.createElement('tr');
+      el.innerHTML = rowHTML(j);
+      el.dataset.gen = cvGen;
+      el.classList.add('gone');
+      live.set(k, el);
+      fresh.push(el);
+      list.append(el);
+      continue;
+    }
+    if (el.dataset.gen !== String(cvGen)) {
+      // Rebuilt in place rather than remounted: the row keeps its position
+      // while the list reorders around it, which is the same thing the reorder
+      // path below is protecting.
+      el.innerHTML = rowHTML(j);
+      el.dataset.gen = cvGen;
+    }
+    if (!append) {
+      // A new result set can reorder rows that are already on screen — relevance
+      // does — so kept rows are moved into place. Never on the append path:
+      // they are already in order there, and moving a node restarts whatever
+      // transition it is running, including a row still collapsing from the
+      // filter change before this one.
+      list.append(el);
+    }
+  }
+  // rAF is the right moment to reveal a freshly mounted row — but it never
+  // fires in a headless render, which would leave every row sitting at zero
+  // opacity in a screenshot or a prerender. The timeout is idempotent.
+  if (fresh.length) {
+    const show = () => fresh.forEach(el => el.classList.remove('gone'));
+    requestAnimationFrame(show);
+    setTimeout(show, 50);
+  }
+}
+
+// The empty state is a framed panel beside the table rather than a row inside
+// it, so a column header never sits above nothing.
+function blank(head, note, label, fn) {
+  live.clear();
+  $('#rows').innerHTML = '';
+  $('#emptyhead').textContent = head;
+  $('#emptynote').textContent = note;
+  $('#emptybtn').textContent = label;
+  $('#emptybtn').onclick = fn;
+  $('#empty').hidden = false;
+  $('#board').hidden = true;
+}
+
+/* ---------- loading ---------- */
+
+let timer, seq = 0;
+let shown = [];                // every job currently mounted, in order
+
+async function load(more = false) {
+  const mine = ++seq;
+  state.offset = more ? state.offset + PAGE : 0;
+  const p = params(state.offset);
+
+  let d;
+  try {
+    d = STATIC.on ? searchLocal(p) : await (await fetch('/api/search?' + p)).json();
+    // A 500 from /api/search is `{error: ...}`, which would otherwise reach
+    // `d.results.map` and leave the skeletons up forever.
+    if (!d || !Array.isArray(d.results)) throw new Error((d && d.error) || 'bad response');
+  } catch {
+    if (mine !== seq) return;
+    // A failed "show more" keeps the rows already on screen and rewinds the
+    // offset, so the link that is still there retries the same page.
+    if (more) { state.offset = Math.max(state.offset - PAGE, 0); return; }
+    $('#live').textContent = 'Roles could not be loaded.';
+    blank('Roles could not be loaded',
+      'Something went wrong reaching the index. Check your connection and try again.',
+      'Try again', () => load());
+    $('#foot').innerHTML = '';
+    return;
+  }
+
+  // Typing fires a request every 200ms and /api/search does not answer in
+  // order. Without this an earlier, slower response lands last and the list
+  // stops matching the box.
+  if (mine !== seq) return;
+
+  total = d.total;
+  shown = more ? shown.concat(d.results) : d.results;
+  $('#board').classList.toggle('matched', CV.on);
+
+  if (!shown.length) {
+    blank('Nothing matches',
+      'Widen the dial, clear the search, or drop a filter.', 'Clear everything', reset);
+  } else {
+    $('#empty').hidden = true;
+    $('#board').hidden = false;
+    paintRows(shown, more);
+  }
+
+  odometer(total);
+  $('#odolabel').textContent = state.q ? 'matching this search'
+    : whole() ? 'roles in the index' : 'roles in this window';
+  $('#count').textContent = n(total);
+  $('#countlabel').textContent = 'roles match'
+    + (state.city ? ' in ' + place(state.city) : '');
+  // The odometer reads as loose digits to a screen reader, so the number is
+  // also announced as a sentence.
+  $('#live').textContent = `${n(total)} role${total === 1 ? '' : 's'} ${
+    state.q ? 'match this search' : whole() ? 'in the index' : 'in this window'}.`;
+
+  // The list is ranked rather than cut when a resume is loaded, so the count
+  // that matters is no longer "how many matched" but "how many share anything
+  // at all" — and, separately, how many could not be weighed because their ad
+  // carried no text. Saying both is the difference between a ranking and a
+  // verdict.
+  const ranked = CV.on
+    ? `${n(d.matched || 0)} of these share something with your r&eacute;sum&eacute;,
+       ranked first.${UNRANKABLE ? ` ${n(UNRANKABLE)} roles in the index publish no
+       description at all and cannot be ranked either way.` : ''} `
+    : '';
+  $('#foot').innerHTML = total
+    ? `<span>Showing 1&ndash;${n(Math.min(shown.length, total))} of ${n(total)}.
+       ${ranked}Every one still open as of the last sweep.</span>
+       <button type="button" class="btn btn-secondary" id="more"${
+         shown.length >= total ? ' hidden' : ''}>Show ${
+         Math.min(PAGE, total - shown.length)} more</button>`
+    : '';
+  if ($('#more')) $('#more').onclick = () => load(true);
+
+  if (!more && d.facets) rail(d.facets);
+}
+
+/* ---------- the rail ---------- */
+
+// Only the metros: the raw column carries suburbs ("Barangaroo", "North Ryde")
+// and vendor-cased noise, which is not a location picker anyone wants. Values
+// stay the index's own strings so both backends filter identically.
+const METROS = ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Canberra',
+                'Hobart', 'Darwin', 'Gold Coast', 'Newcastle', 'Wollongong'];
+
+let railDone = false;
+
+function rail(f) {
+  if (railDone || !f || !f.cities) return;
+  railDone = true;
+
+  const have = new Map(f.cities.filter(c => c.key)
+    .map(c => [c.key.toLowerCase(), c]));
+  const rows = METROS.map(m => have.get(m.toLowerCase()))
+    .filter(Boolean).map(c => ({ ...c, label:place(c.key) }));
+  // A shared link can name a city the metro list does not carry; keep it
+  // selectable rather than silently dropping the filter the results are using.
+  if (state.city && !rows.some(c => c.key === state.city))
+    rows.push({ key:state.city, n:0, label:place(state.city) });
+
+  const max = Math.max(1, ...rows.map(c => c.n));
+  $('#cities').innerHTML = rows.map(c =>
+    `<button type="button" data-city="${esc(c.key)}" aria-pressed="false">
+      <b>${esc(c.label)}</b>
+      <i style="width:${Math.max(Math.round(c.n / max * 46), 4)}px"></i>
+      <em>${n(c.n)}</em>
+    </button>`).join('');
+  for (const b of document.querySelectorAll('#cities button'))
+    b.onclick = () => { state.city = state.city === b.dataset.city ? '' : b.dataset.city;
+                        apply(); };
+
+  // How many roles say nothing about work type at all — which is most of them,
+  // and the reason the three chips are not a partition of the index.
+  const typed = (f.remote || []).filter(r => WORK[r.key])
+    .reduce((a, r) => a + r.n, 0);
+  const scope = f.scope || (f.remote || []).reduce((a, r) => a + r.n, 0);
+  $('#worknote').innerHTML = `Work type is the employer&rsquo;s own
+    <b>workplaceType</b> field, not a recruiter&rsquo;s tickbox &mdash; which is why
+    it is missing more often than not. ${n(Math.max(scope - typed, 0))} of these roles
+    publish none.`;
+  // The salary control is the one filter that can hide most of the index, so
+  // the rail says how many roles it would leave rather than letting the reader
+  // discover it by watching the list empty.
+  const salaried = f.salaried;
+  const scopeN = f.scope || 0;
+  if (salaried !== undefined) {
+    $('#paidn').textContent = n(salaried);
+    $('#paidnote').innerHTML = scopeN
+      ? `Only ${n(salaried)} of ${n(scopeN)} roles publish a structured band, so
+         this hides most of the index.`
+      : '';
+  }
+
+  paint();
+}
+
+/* ---------- controls ---------- */
+
+function paint() {
+  $('#q').value = state.q;
+  $('#xq').classList.toggle('on', !!state.q);
+  for (const b of document.querySelectorAll('#cities button'))
+    b.ariaPressed = String(b.dataset.city === state.city);
+  for (const b of document.querySelectorAll('#works button'))
+    b.ariaPressed = String(b.dataset.work === state.work);
+  // An unchosen sort still shows which order the list is actually in.
+  const effective = state.sort || (state.q ? 'relevance' : 'newest');
+  for (const b of document.querySelectorAll('#sorts button')) {
+    b.ariaPressed = String(b.dataset.sort === effective);
+    // Relevance has nothing to rank against without a query.
+    b.disabled = b.dataset.sort === 'relevance' && !state.q;
+  }
+  $('#paid').checked = state.paid;
+  $('#reset').classList.toggle('on', dirty());
+  $('#scope').textContent = state.cat === 'all'
+    ? 'every field · Australia' : 'data & AI · Australia';
+  $('#scopeout').innerHTML = state.cat === 'all'
+    ? 'Showing every field. <a href="?">Back to data &amp; AI</a>'
+    : 'This is the data &amp; AI slice. <a href="?roles=all">Every open Australian role</a>';
+  paintDial();
+}
+
+// Relevance needs an FTS expression to rank against. When the box empties,
+// both backends fall back to newest, so the chosen sort has to fall back too
+// rather than leaving the control asserting an order the list is not in.
+function normaliseSort() {
+  if (state.sort === 'relevance' && !state.q) state.sort = '';
+}
+
+function apply() { normaliseSort(); paint(); writeURL(); load(); }
+
+function reset() {
+  Object.assign(state, { q:'', city:'', work:'', paid:false, sort:'',
+                         a:0, b:WEEKS - 1 });
+  apply();
+}
+
+$('#q').oninput = e => {
+  state.q = e.target.value.trim();
+  $('#xq').classList.toggle('on', !!e.target.value);
+  clearTimeout(timer);
+  timer = setTimeout(() => { normaliseSort(); paint(); writeURL(); load(); }, 200);
+};
+$('#q').onkeydown = e => {
+  if (e.key === 'Enter') { clearTimeout(timer); e.target.blur(); apply(); }
+};
+$('#xq').onclick = () => { state.q = ''; clearTimeout(timer); apply(); $('#q').focus(); };
+for (const b of document.querySelectorAll('#works button'))
+  b.onclick = () => { state.work = state.work === b.dataset.work ? '' : b.dataset.work;
+                      apply(); };
+for (const b of document.querySelectorAll('#sorts button'))
+  b.onclick = () => { state.sort = b.dataset.sort; apply(); };
+$('#paid').onchange = e => { state.paid = e.target.checked; apply(); };
+$('#reset').onclick = reset;
+
+document.addEventListener('keydown', e => {
+  if (e.key !== '/' || e.metaKey || e.ctrlKey) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+  e.preventDefault();
+  $('#q').focus();
+});
+
+/* ---------- freshness ---------- */
+
+// Absolute timestamp in, relative sentence out, computed at read time — so a
+// week-old export says "swept 8 days ago" instead of repeating whatever it was
+// able to claim on the morning it was built.
+function swept(iso) {
+  const el = $('#swept');
+  if (!iso) { el.hidden = true; return; }
+  const h = (Date.now() - new Date(iso.replace(' ', 'T'))) / 36e5;
+  const text = !Number.isFinite(h) ? '' : h < 1.5 ? 'swept just now'
+    : h < 48 ? `swept ${Math.round(h)} hours ago`
+    : `swept ${Math.round(h / 24)} days ago`;
+  if (!text) { el.hidden = true; return; }
+  el.lastElementChild.textContent = text;
+  el.classList.toggle('cold', h > 48);
+}
+
+async function boot() {
+  await detectStatic();
+  if (!STATIC.on) {
+    // The served page reads the same payload the export precomputes.
+    try {
+      const r = await fetch('/api/pulse');
+      const p = await r.json();
+      if (p && p.weeks) PULSE = p;
+    } catch { /* the dial is an enhancement; the list is the page */ }
+  }
+  if (PULSE) { drawDial(); swept(PULSE.last_run); }
+  else { $('#swept').hidden = true; }
+  paint();
+  load();
+}
+
+readURL();
+boot();
+</script>
