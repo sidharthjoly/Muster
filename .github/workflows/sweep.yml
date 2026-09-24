@@ -145,7 +145,25 @@ jobs:
             --budget "${{ inputs.budget || 400 }}" \
             --deadline 270
 
+      # Bodies the last export already read, so this one downloads only the
+      # descriptions that changed. See `BODY_CACHE` in export_static.py; the
+      # path here has to match it or every run starts cold. A unique key per
+      # run because a cache entry is immutable once saved: restore-keys picks
+      # up the newest, and the post step saves this run's as the next newest.
+      - name: Restore the export's body cache
+        uses: actions/cache@v4
+        with:
+          path: data/cache/export_bodies.json.gz
+          key: export-bodies-${{ github.run_id }}
+          restore-keys: export-bodies-
+
+      # Only when nothing is going to be published. `--publish` builds too, so
+      # running this ahead of it read the whole AU slice out of Neon twice a
+      # sweep, and the first copy was thrown away with the runner. At four
+      # sweeps a day that duplicate was, by estimate, roughly half of what
+      # used up the 5 GB monthly transfer allowance in September.
       - name: Build the static export
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: uv run python scripts/export_static.py

@@ -340,3 +340,44 @@ def test_frontier_operations_reconnect_after_the_server_hangs_up(store):
     store.dsn = "postgresql://nobody@127.0.0.1:1/nope"
     with pytest.raises(Exception):
         f.count("pending")
+
+
+# -- the export's description cache ------------------------------------------
+
+
+def test_the_export_reads_each_description_once(store, tmp_path, monkeypatch):
+    """The body cache on the backend it exists for.
+
+    Two things only a real server can show. `md5()` and the row-value
+    `IN (VALUES ...)` have to parse on Postgres, not just on the SQLite that
+    `test_export_cache.py` runs against. And Postgres's md5 has to agree with
+    Python's byte for byte: the cache re-hashes every entry on load and drops
+    any that disagree, so a mismatch would not fail — it would quietly
+    re-read every description on every run, which is the bill this exists to
+    stop.
+    """
+    import json
+
+    import scripts.export_static as ex
+
+    store.reconcile(snap([
+        job("1", description_text="Python, dbt and Snowflake."),
+        job("2", "Data Engineer", description_text="Spark — and Kafka, naïvely."),
+        job("3", "Chef", description_text=""),
+    ]))
+    monkeypatch.setenv("DATABASE_URL_UNPOOLED", DSN)
+    monkeypatch.setattr(ex, "SITE", tmp_path / "site")
+    monkeypatch.setattr(ex, "BODY_CACHE", tmp_path / "bodies.json.gz")
+    reads = []
+    real = ex._read_bodies
+    monkeypatch.setattr(ex, "_read_bodies", lambda c, b, keys: (
+        reads.append(len(keys)), real(c, b, keys))[1])
+
+    def export():
+        assert ex.build(tmp_path / "unused.db")["backend"] == "postgres"
+        return json.loads((tmp_path / "site" / "data" / "jobs.json").read_text())
+
+    cold = export()
+    assert reads == [3]
+    assert export() == cold
+    assert reads == [3, 0], "Postgres md5 and Python md5 disagree"

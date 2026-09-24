@@ -38,6 +38,8 @@ reverting to whatever the local SQLite file last knew.
 from __future__ import annotations
 
 import argparse
+import gzip
+import hashlib
 import json
 import os
 import shutil
@@ -70,18 +72,47 @@ ASSETS = ("favicon.svg", "muster.svg", "muster-lockup.svg")
 # next publish and then the domain silently stops resolving.
 CNAME = "muster.sidharthjoly.com"
 
+# The body's md5, not the body. Descriptions are ~95% of what this query would
+# otherwise move, they barely change between sweeps, and Neon meters every byte
+# that leaves it. Reading all of them on every export came to an estimated 45MB
+# a build at 9,184 AU roles — the largest single draw on the free tier's 5 GB
+# of monthly transfer when it ran out in September (estimated from a local
+# copy; the database was locked by then and could not be measured). `_bodies`
+# reads only the ones the cache has not seen.
 JOBS_SQL = """
 SELECT j.ats_vendor, j.board_token, j.external_id, j.title,
        COALESCE(c.name, j.board_token) AS company,
        j.location_city, j.location_raw, j.remote_type,
        j.salary_min, j.salary_max, j.salary_currency,
        j.apply_url, j.posted_at, j.first_seen_at,
-       COALESCE(j.description_text, '') AS body
+       md5(COALESCE(j.description_text, '')) AS body_md5
 FROM jobs j
 LEFT JOIN companies c
   ON c.ats_vendor = j.ats_vendor AND c.board_token = j.board_token
 WHERE j.closed_at IS NULL AND j.location_country = 'AU'
 """
+
+# By primary key rather than by md5, so the lookup is an index probe instead of
+# hashing every AU body again for each chunk. `IN (VALUES ...)` because that
+# is the row-value form SQLite and Postgres both accept.
+BODIES_SQL = """
+SELECT md5(COALESCE(description_text, '')), COALESCE(description_text, '')
+FROM jobs
+WHERE (ats_vendor, board_token, external_id) IN (VALUES {keys})
+"""
+# Three placeholders a key, kept under the 999 an older SQLite allows.
+BODY_CHUNK = 300
+
+# Descriptions the last export already read, by md5 of the text. The key is a
+# hash of the body itself and deliberately not `content_hash`: Workday hashes
+# its listing, while the body comes from a separate detail fetch that can be
+# skipped on one sweep and filled on the next, so the same `content_hash` can
+# sit in front of an empty body one day and a full one the next.
+#
+# CI keeps this file between runs with actions/cache (see sweep.yml, whose
+# `path:` has to match this). A missing cache costs one full read, not a wrong
+# export.
+BODY_CACHE = ROOT / "data" / "cache" / "export_bodies.json.gz"
 
 
 def _dsn() -> str | None:
@@ -121,7 +152,91 @@ def _connect(db: Path):
         return conn, "postgres"
     conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
+    # Postgres has md5() built in and SQLite does not. Supplying it here keeps
+    # the body cache one code path on both backends, so the SQLite tests are
+    # exercising the same queries the sweep runs against Neon.
+    conn.create_function("md5", 1, _md5, deterministic=True)
     return conn, "sqlite"
+
+
+def _md5(text: str | None) -> str | None:
+    """Postgres's md5(): hex digest of the text's UTF-8 bytes."""
+    return None if text is None else hashlib.md5(text.encode()).hexdigest()
+
+
+def _load_cache(path: Path) -> dict[str, str]:
+    """md5 -> body from the last export, or nothing.
+
+    Every entry is re-hashed on the way in, so a truncated, stale or hand-edited
+    file can cost a re-read but can never put the wrong description behind a
+    role. An unreadable file is an empty cache rather than an error: failing
+    here would fail the publish, which is a far worse outcome than one export's
+    worth of transfer.
+    """
+    try:
+        with gzip.open(path, "rt", encoding="utf-8") as f:
+            cached = json.load(f)
+    except (OSError, EOFError, ValueError):
+        return {}
+    if not isinstance(cached, dict):
+        return {}
+    return {h: b for h, b in cached.items()
+            if isinstance(b, str) and _md5(b) == h}
+
+
+def _save_cache(path: Path, bodies: dict[str, str]) -> None:
+    """Replace the cache with exactly the bodies this export used, so roles
+    that closed or left Australia drop out instead of accumulating."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".tmp")
+        with gzip.open(tmp, "wt", encoding="utf-8") as f:
+            json.dump(bodies, f, separators=(",", ":"))
+        tmp.replace(path)
+    except OSError as e:
+        print(f"could not save the body cache ({e}); the next export will "
+              f"read every description again", file=sys.stderr)
+
+
+def _read_bodies(conn, backend: str,
+                 keys: list[tuple[str, str, str]]) -> list[tuple[str, str]]:
+    """(md5, body) for each job key, straight from the database. The only
+    query in the export whose size is the descriptions themselves."""
+    ph = "%s" if backend == "postgres" else "?"
+    out = []
+    for i in range(0, len(keys), BODY_CHUNK):
+        chunk = keys[i:i + BODY_CHUNK]
+        sql = BODIES_SQL.format(keys=", ".join([f"({ph}, {ph}, {ph})"] * len(chunk)))
+        out += [(r[0], r[1]) for r in
+                conn.execute(sql, [v for key in chunk for v in key]).fetchall()]
+    return out
+
+
+def _bodies(conn, backend: str, jobs: list[dict]) -> list[str]:
+    """Each job's description, in order, reading from the database only the
+    ones the cache does not already hold. Pops `body_md5` off every job."""
+    cached = _load_cache(BODY_CACHE)
+    # One key per distinct body is enough: the answer is keyed by md5, and
+    # plenty of roles share a body (an empty one, or one ad posted to several
+    # cities).
+    want = {j["body_md5"]: (j["ats_vendor"], j["board_token"], j["external_id"])
+            for j in jobs}
+    have = {h: cached[h] for h in want if h in cached}
+    missing = [key for h, key in want.items() if h not in have]
+    have.update(_read_bodies(conn, backend, missing))
+    print(f"descriptions: {len(want) - len(missing):,} from cache, "
+          f"{len(missing):,} read from {backend}")
+
+    # A body that changed between the two queries comes back under a new md5
+    # and leaves the old one unanswered. Nothing in the pipeline writes to
+    # `jobs` while an export runs, so this is a guard, not an expected path:
+    # the role exports with no vocabulary and the next export picks it up.
+    lost = sum(1 for h in want if h not in have)
+    if lost:
+        print(f"{lost} description(s) changed mid-export; exported without "
+              f"keywords", file=sys.stderr)
+    _save_cache(BODY_CACHE, {h: have[h] for h in want if h in have})
+    return [have.get(j.pop("body_md5"), "") for j in jobs]
 
 
 def _iso(o):
@@ -166,7 +281,7 @@ def build(db: Path) -> dict:
     # single line now and renders no excerpt, so the only thing the browser
     # still needs from the body is the ability to match it. A 320-character
     # prefix could not do that — ads name their tools at the end.
-    bodies = [j.pop("body") for j in jobs]
+    bodies = _bodies(conn, backend, jobs)
     # Two passes over the same text, because they want opposite ends of the
     # frequency distribution. `kw` keeps what is rare enough to narrow a search;
     # `sk` keeps a closed list of skills regardless of how common they are,
