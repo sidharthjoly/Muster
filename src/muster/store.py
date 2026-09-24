@@ -13,6 +13,7 @@ kept to the subset both dialects share.
 
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from dataclasses import dataclass, field
@@ -313,16 +314,30 @@ class Store:
         return out
 
     # -- writes ------------------------------------------------------------
-    def _upsert(self, job: Job, now) -> None:
+    def _upsert(self, jobs: list[Job], now) -> None:
+        """Write a board's jobs as one batch, not one round trip each.
+
+        psycopg pipelines `executemany`, so a 2,000-job Workday tenant is a
+        handful of network turns instead of 2,000, and the replies share
+        packets instead of each paying for its own. The replies are the part
+        Neon bills — it meters transfer out of the database, not into it.
+        Measured at a local Postgres's network interface over a 51k-job
+        re-sweep, they came to ~107 bytes a job row by row and ~33 batched.
+        """
         cols = ["ats_vendor", "board_token", "external_id"] + UPSERT_COLUMNS + [
             "first_seen_at", "last_seen_at", "closed_at"]
-        drop_body = (
-            self.descriptions == "au-only"
-            and not is_australian(job.location_city, job.location_country, job.location_raw)
-        )
-        vals = [job.ats_vendor, job.board_token, job.external_id] + [
-            "" if (drop_body and c.startswith("description_")) else getattr(job, c)
-            for c in UPSERT_COLUMNS] + [now, now, None]
+        rows = []
+        for job in jobs:
+            drop_body = (
+                self.descriptions == "au-only"
+                and not is_australian(job.location_city, job.location_country,
+                                      job.location_raw)
+            )
+            rows.append([job.ats_vendor, job.board_token, job.external_id] + [
+                "" if (drop_body and c.startswith("description_")) else getattr(job, c)
+                for c in UPSERT_COLUMNS] + [now, now, None])
+        if not rows:
+            return
         marks = ", ".join([self.ph] * len(cols))
         # Re-listing a job that had been closed reopens it: closed_at back to NULL,
         # while first_seen_at is preserved so the hiring-signal history stays intact.
@@ -332,7 +347,7 @@ class Store:
             f"ON CONFLICT (ats_vendor, board_token, external_id) DO UPDATE SET "
             f"{updates}, last_seen_at=EXCLUDED.last_seen_at, closed_at=NULL"
         )
-        self.conn.cursor().execute(sql, vals)
+        self.conn.cursor().executemany(sql, rows)
 
     def _dropped(self, exc: BaseException) -> bool:
         """Did the server hang up, as opposed to rejecting the query?"""
@@ -388,27 +403,21 @@ class Store:
             return res
 
         now = self._now()
-        before_open = self.open_jobs(snap.ats_vendor, snap.board_token)
-        before_hash = self.hashes(snap.ats_vendor, snap.board_token)
-
-        for job in snap.jobs:
-            known = job.external_id in before_hash
-            if not known:
-                res.new += 1
-            elif before_hash[job.external_id] != job.content_hash:
-                res.updated += 1
-            else:
-                res.unchanged += 1
-            if known and job.external_id not in before_open:
-                res.reopened += 1
-            self._upsert(job, now)
+        # Counted BEFORE the upsert, which rewrites every hash on the board and
+        # clears closed_at on every job it touches: afterwards nothing would
+        # read as new, changed or reopened. Do not move this below it.
+        res.new, res.updated, res.reopened, open_before = self._diff(snap)
+        res.unchanged = res.fetched - res.new - res.updated
+        self._upsert(snap.jobs, now)
 
         # --- closure detection ------------------------------------------
         # Only a complete board may retire jobs. Without this guard a truncated
         # or partially-failed fetch would mark every missing job closed.
-        # NB: `before_open` was captured BEFORE the upsert loop above, which
-        # clears closed_at on every job it touches. Recomputing the open set
-        # here instead would find nothing closed. Do not reorder these blocks.
+        # NB: closing runs AFTER the upsert and closes whatever is open but
+        # absent from the fetched ids. Those two orders agree only because the
+        # upsert touches nothing but fetched ids: every row it reopens is one
+        # this step must leave alone, and every row it leaves alone kept the
+        # state it had before the board was fetched.
         # A board that comes back complete-but-empty is ambiguous, and the
         # ambiguity is worst on SmartRecruiters, which answers 200 with
         # totalFound 0 both for a board whose roles were all filled and for a
@@ -417,7 +426,7 @@ class Store:
         # above the listings. So an empty board retires nothing the first time;
         # it must come back empty twice in a row. A genuinely emptied board is
         # therefore closed one run later, which is cheap.
-        if snap.complete and not snap.jobs and before_open and not \
+        if snap.complete and not snap.jobs and open_before and not \
                 self._last_run_was_empty(snap.ats_vendor, snap.board_token):
             res.skipped_close = True
             res.note = "board came back empty; awaiting a second empty run before closing"
@@ -426,18 +435,21 @@ class Store:
             return res
 
         if snap.complete:
-            fetched_ids = {j.external_id for j in snap.jobs}
-            gone = [eid for eid in before_open if eid not in fetched_ids]
-            if gone:
-                marks = ", ".join([self.ph] * len(gone))
-                self.conn.cursor().execute(
-                    f"UPDATE jobs SET closed_at={self.ph} WHERE ats_vendor={self.ph} "
-                    f"AND board_token={self.ph} AND closed_at IS NULL "
-                    f"AND external_id IN ({marks})",
-                    [now, snap.ats_vendor, snap.board_token, *gone],
-                )
-            res.closed = len(gone)
-            res.closed_titles = [before_open[e] for e in gone][:10]
+            rel, params = self._fetched(snap.jobs)
+            cur = self.conn.cursor()
+            # RETURNING hands back only what closed, so the titles cost what
+            # the closures are rather than what the board is.
+            cur.execute(
+                f"WITH fetched(external_id, content_hash) AS ({rel}) "
+                f"UPDATE jobs SET closed_at={self.ph} WHERE ats_vendor={self.ph} "
+                f"AND board_token={self.ph} AND closed_at IS NULL "
+                f"AND external_id NOT IN (SELECT external_id FROM fetched) "
+                f"RETURNING title",
+                [*params, now, snap.ats_vendor, snap.board_token],
+            )
+            closed = [r[0] for r in cur.fetchall()]
+            res.closed = len(closed)
+            res.closed_titles = closed[:10]
         else:
             res.skipped_close = True
 
@@ -445,15 +457,71 @@ class Store:
         self.conn.commit()
         return res
 
+    def _fetched(self, jobs: list[Job]) -> tuple[str, list]:
+        """The fetched board as a relation the database can join against.
+
+        Reconcile used to read the stored board down — every open id and title,
+        then every id and hash — and diff it here: ~170 bytes a job, measured
+        at a local Postgres's network interface, on every board of every
+        sweep. By estimate that was the largest remaining draw on Neon's
+        monthly transfer once the export stopped re-reading descriptions.
+        Sent up instead, the same ids and hashes are
+        free (Neon meters transfer out of the database, not into it), and what
+        comes back is four counts and the titles of whatever closed.
+
+        One parameter however large the board, so neither dialect's cap on
+        placeholders can be reached. The only dialect split in the diff is
+        here, in how a list becomes rows.
+        """
+        if self.backend == "postgres":
+            # Cast explicitly: an empty list carries no element type, and the
+            # empty board is exactly the case that must not fail.
+            return ("SELECT * FROM unnest(%s::text[], %s::text[])",
+                    [[j.external_id for j in jobs], [j.content_hash for j in jobs]])
+        return ("SELECT json_extract(value, '$[0]'), json_extract(value, '$[1]') "
+                "FROM json_each(?)",
+                [json.dumps([[j.external_id, j.content_hash] for j in jobs])])
+
+    def _diff(self, snap: BoardSnapshot) -> tuple[int, int, int, int]:
+        """(new, updated, reopened, open) for a fetched board against the
+        stored one, counted by the database.
+
+        Per fetched row, exactly as the Python loop this replaced counted
+        them: a duplicate id on the board counts twice, and a stored row with
+        no hash at all counts as updated rather than unchanged.
+        """
+        rel, params = self._fetched(snap.jobs)
+        ph = self.ph
+        cur = self.conn.cursor()
+        cur.execute(
+            f"WITH fetched(external_id, content_hash) AS ({rel}) "
+            f"SELECT "
+            f"COALESCE(sum(CASE WHEN j.external_id IS NULL THEN 1 ELSE 0 END), 0), "
+            f"COALESCE(sum(CASE WHEN j.external_id IS NOT NULL AND "
+            f"(j.content_hash IS NULL OR j.content_hash <> f.content_hash) "
+            f"THEN 1 ELSE 0 END), 0), "
+            f"COALESCE(sum(CASE WHEN j.closed_at IS NOT NULL THEN 1 ELSE 0 END), 0), "
+            f"(SELECT count(*) FROM jobs WHERE ats_vendor={ph} AND board_token={ph} "
+            f"AND closed_at IS NULL) "
+            f"FROM fetched f LEFT JOIN jobs j ON j.ats_vendor={ph} "
+            f"AND j.board_token={ph} AND j.external_id = f.external_id",
+            [*params, snap.ats_vendor, snap.board_token,
+             snap.ats_vendor, snap.board_token],
+        )
+        new, updated, reopened, open_now = cur.fetchone()
+        return int(new), int(updated), int(reopened), int(open_now)
+
     def _last_run_was_empty(self, vendor: str, token: str) -> bool:
+        # LIMIT 1: only the latest run is read, and without it the driver
+        # pulls this board's entire run history over the wire to get it.
         cur = self.conn.cursor()
         cur.execute(
             f"SELECT n_fetched, complete FROM board_runs WHERE ats_vendor={self.ph} "
             f"AND board_token={self.ph} AND error IS NULL "
-            f"ORDER BY fetched_at DESC, rowid DESC" if self.backend != "postgres"
+            f"ORDER BY fetched_at DESC, rowid DESC LIMIT 1" if self.backend != "postgres"
             else f"SELECT n_fetched, complete FROM board_runs WHERE ats_vendor={self.ph} "
                  f"AND board_token={self.ph} AND error IS NULL "
-                 f"ORDER BY fetched_at DESC, id DESC",
+                 f"ORDER BY fetched_at DESC, id DESC LIMIT 1",
             (vendor, token),
         )
         row = cur.fetchone()

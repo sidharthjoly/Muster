@@ -82,10 +82,12 @@ BOARD_TIMEOUT = 25 * 60
 #
 # A chunk is fetched concurrently, then reconciled with nothing in flight,
 # rather than reconciling each board the moment it lands. Reconcile is
-# synchronous and `_upsert` costs a round trip per job, so writing a large
-# Workday tenant blocks the event loop for seconds and a whole chunk for
-# minutes; doing that while other boards are mid-fetch would push them past
-# httpx's 45s read timeout and fail them for no reason.
+# synchronous, so writing blocks the event loop; doing that while other boards
+# are mid-fetch could push them past httpx's 45s read timeout and fail them for
+# no reason. `_upsert` now pipelines a board's jobs rather than paying a round
+# trip each (the whole 51k-job local index writes in ~5s where it took ~19s),
+# so the block is shorter than it was, but it is still not zero -- and against
+# Neon each turn is a network hop, not a local socket.
 #
 # The cost of chunking is the tail: a chunk is only as quick as its slowest
 # board, so one tenant that runs the full BOARD_TIMEOUT holds up the writing
@@ -403,10 +405,10 @@ async def sweep(vendor: str, tokens: list[str], store: Store,
         """Write one chunk's boards, then let go of the database again.
 
         Synchronous, and called only between chunks — never while a request
-        is in flight. That ordering is not tidiness: `_upsert` is one round
-        trip per job, so reconciling a chunk of large Workday tenants is
-        minutes of blocked event loop, and anything still fetching would sit
-        past httpx's 45s read timeout and fail for no reason.
+        is in flight. That ordering is not tidiness: reconciling a chunk of
+        large Workday tenants blocks the event loop, and anything still
+        fetching could sit past httpx's 45s read timeout and fail for no
+        reason. Batching `_upsert` shortened the block; it did not remove it.
         """
         nonlocal failures
         if not batch:

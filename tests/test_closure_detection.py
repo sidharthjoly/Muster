@@ -89,6 +89,25 @@ def test_content_change_counts_as_updated(store):
     assert cur.fetchone()[0] == "Senior Data Scientist"
 
 
+# The diff moved into SQL so that reconcile stops reading every board back out
+# of Neon. These two pin the corners where SQL and the Python loop it replaced
+# could quietly disagree: NULL comparisons, and a join that meets the same id
+# twice.
+def test_a_stored_row_with_no_hash_counts_as_updated(store):
+    store.reconcile(snap([job("1"), job("2")]))
+    store.conn.execute("UPDATE jobs SET content_hash = NULL WHERE external_id = '1'")
+    store.conn.commit()
+    r = store.reconcile(snap([job("1"), job("2")]))
+    assert (r.new, r.updated, r.unchanged) == (0, 1, 1)
+
+
+def test_an_id_listed_twice_is_counted_per_listing_and_closes_nothing(store):
+    store.reconcile(snap([job("1"), job("2")]))
+    r = store.reconcile(snap([job("1"), job("1"), job("2")]))
+    assert (r.fetched, r.unchanged, r.closed) == (3, 3, 0)
+    assert len(store.open_jobs("greenhouse", "acme")) == 2
+
+
 def test_boards_are_isolated_from_each_other(store):
     store.reconcile(snap([job("1")]))
     other = BoardSnapshot(ats_vendor="greenhouse", board_token="other", complete=True,
