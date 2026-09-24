@@ -43,6 +43,14 @@ from .base import BoardIncomplete, polite_retry
 TOKEN_RE = re.compile(r"^(?P<tenant>[A-Za-z0-9_-]+)\.(?P<wd>wd\d+)/(?P<site>.+)$")
 PAGE = 20  # hard vendor cap; 50 or 100 returns an empty body
 
+# Listing fields left out of `content_hash` because they change while the
+# posting does not. `postedOn` is relative text -- "Posted Today", "Posted 3
+# Days Ago", "Posted 30+ Days Ago" -- so it ticks over every day a role is up,
+# and hashed it made half of every Workday board read as "updated" each sweep
+# (23,328 of 45,767 jobs on Sep 23, against ~3% on Greenhouse). The real
+# posting date comes from the detail fetch as `startDate`, not from this.
+UNHASHED = frozenset({"postedOn"})
+
 
 def _blank_if_none(v):
     return v or ""
@@ -117,7 +125,8 @@ def map_job(raw: WdPosting, token: str, raw_dict: dict, detail: dict | None = No
         or f"https://{tenant}.{wd}.myworkdayjobs.com/{site}{raw.externalPath}",
         # `postedOn` is relative text; startDate is a real date.
         posted_at=info.get("startDate") or None,
-        content_hash=content_hash(raw_dict),
+        content_hash=content_hash(
+            {k: v for k, v in raw_dict.items() if k not in UNHASHED}),
     )
 
 

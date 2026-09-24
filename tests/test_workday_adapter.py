@@ -75,6 +75,23 @@ def test_detail_supplies_body_country_and_real_date():
     assert j.posted_at and j.posted_at.startswith("20"), j.posted_at
 
 
+def test_a_day_passing_is_not_an_update():
+    """`postedOn` is "Posted Today" one day and "Posted Yesterday" the next.
+    Hashed, every role under 30 days old read as updated on every sweep."""
+    today = payload()
+    later = payload()
+    for p in later["jobPostings"]:
+        p["postedOn"] = "Posted 3 Days Ago"
+    a = WorkdayAdapter().parse(today, TOKEN).jobs
+    b = WorkdayAdapter().parse(later, TOKEN).jobs
+    assert [j.content_hash for j in a] == [j.content_hash for j in b]
+
+    # ...while a real edit to the listing still is one.
+    later["jobPostings"][0]["title"] += " (Senior)"
+    b = WorkdayAdapter().parse(later, TOKEN).jobs
+    assert a[0].content_hash != b[0].content_hash
+
+
 def test_body_is_empty_without_a_detail_fetch():
     snap = WorkdayAdapter().parse(payload(), TOKEN)
     assert all(j.description_html == "" for j in snap.jobs)
