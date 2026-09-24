@@ -52,14 +52,14 @@ def _server_tools() -> dict[str, set[str]]:
 
 
 def _page_tools() -> dict[str, set[str]]:
-    """Tool name -> the parameters its section of api.html documents."""
+    """Tool name -> the arguments its section of api.html documents."""
     html = API_PAGE.read_text()
     tools = {}
     for name, body in re.findall(
             r'<section class="[^"]*\btool\b[^"]*" id="(\w+)">(.*?)</section>', html, re.S):
-        table = re.search(r'<table class="ref params">(.*?)</table>', body, re.S)
-        tools[name] = set(re.findall(r"<tr><td><code>(\w+)</code>",
-                                     table.group(1))) if table else set()
+        args = re.search(r'<ul class="params">(.*?)</ul>', body, re.S)
+        tools[name] = set(re.findall(r'<li><div class="sig"><code>(\w+)</code>',
+                                     args.group(1))) if args else set()
     return tools
 
 

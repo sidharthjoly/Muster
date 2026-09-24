@@ -58,6 +58,8 @@ curl -s -X POST https://muster.sidharthjoly.com/mcp \
 
 Responses come back as one server-sent event. Remove the `event:` and `data:` prefixes to get the JSON body.
 
+A tool's answer is itself a JSON document, carried as text in `result.content[0].text`. The results below show it parsed.
+
 ## The snapshot envelope
 
 Every tool result — including the error shapes below — includes this:
