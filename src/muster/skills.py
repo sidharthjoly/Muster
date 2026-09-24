@@ -101,8 +101,11 @@ SKILLS: dict[str, tuple[str, ...]] = {
             "generative ai", "genai", "prompt engineering"),
     "mlops": ("mlops", "mlflow", "model deployment", "model monitoring",
               "feature store"),
+    # The noun forms too: matching is whole-word, so "a/b testing" never saw
+    # a résumé that says it "ran A/B tests" or "A/B tested" a change.
     "experimentation": ("a/b testing", "ab testing", "experimentation",
-                        "randomised control", "hypothesis testing"),
+                        "a/b test", "a/b tests", "a/b tested", "ab test",
+                        "ab tests", "randomised control", "hypothesis testing"),
     "causal-inference": ("causal inference", "causal", "econometric",
                          "econometrics"),
     "time-series": ("time series", "forecasting", "arima"),

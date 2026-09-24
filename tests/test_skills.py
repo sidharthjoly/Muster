@@ -46,6 +46,19 @@ def test_detection_is_case_and_form_insensitive():
     assert skills.detect("POWER BI") == skills.detect("Power BI") == {"powerbi"}
 
 
+@pytest.mark.parametrize("text", [
+    "Ran A/B tests on the checkout flow.",
+    "A/B tested three onboarding variants.",
+    "Designed an AB test for pricing.",
+    "Experience with A/B testing.",
+])
+def test_ab_testing_is_read_however_it_is_worded(text):
+    """Whole-word matching made "a/b testing" blind to the noun, and the gap
+    panel then told a résumé that "ran A/B tests" it was missing
+    experimentation."""
+    assert "experimentation" in skills.detect(text)
+
+
 def test_pack_round_trips_and_orders_by_the_vocabulary():
     found = {"dbt", "python", "airflow"}
     blob = skills.pack(found)
