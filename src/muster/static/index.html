@@ -450,6 +450,18 @@
   .foot .btn { margin-left:auto; }
   .foot .btn[hidden] { display:none; }
 
+  /* — the weekly roundup sign-up — */
+  .sub { margin-top:var(--space-8); padding:var(--space-6);
+    display:grid; grid-template-columns:minmax(0,1fr) minmax(0,380px);
+    gap:var(--space-3) var(--space-8); align-items:center; }
+  .sub h2 { margin:0 0 var(--space-2); font-size:13px; letter-spacing:.08em;
+    text-transform:uppercase; }
+  .sub p { margin:0; font-size:13.5px; }
+  .subform { display:flex; gap:var(--space-2); }
+  .subform .input { height:40px; min-height:40px; }
+  .subform .btn { height:40px; flex:none; }
+  .sub .note { grid-column:1 / -1; margin:0; }
+
   /* — footer — */
   footer { border-top:1px solid var(--color-divider); margin-top:var(--space-8); }
   footer .in { max-width:1160px; margin:0 auto; padding:var(--space-6);
@@ -469,6 +481,7 @@
     .nav .acts { width:100%; }
     .title { padding-top:var(--space-6); }
     .meta { margin-left:0; width:100%; }
+    .sub { grid-template-columns:minmax(0,1fr); padding:var(--space-4); }
   }
   @media (prefers-reduced-motion:reduce) {
     * { animation-duration:.01ms !important; transition-duration:.01ms !important; }
@@ -485,6 +498,7 @@
            shipping dead anchors: the index, and the ingest-health console. -->
       <a href="./" aria-current="page">Roles</a>
       <a href="runs.html">Coverage</a>
+      <a href="#subscribe">Weekly email</a>
       <div class="acts" style="display:flex;align-items:center;gap:var(--space-2);margin-left:var(--space-4)">
         <a class="btn btn-secondary" href="https://github.com/sidharthjoly/Muster">Method</a>
       </div>
@@ -657,6 +671,32 @@
         </div>
       </div>
     </div>
+
+    <!-- The newsletter is weekly.xml, turned into email by Buttondown. The form
+         posts straight to Buttondown as a plain HTML form -- their docs say not
+         to submit it from script, because a subscriber may have to finish a
+         CAPTCHA on their page -- and opens in a new tab so the list the reader
+         was looking at is still here afterwards. Muster never sees the
+         address: there is no server here to receive it. -->
+    <section class="sub blueprint" id="subscribe">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div>
+        <h2>The weekly roundup</h2>
+        <p>Once a week, the data and AI roles that first appeared on Muster that
+          week: a count, and ten of them with direct apply links. Prefer a feed
+          reader? <a href="weekly.xml">It&rsquo;s RSS too.</a></p>
+      </div>
+      <form class="subform" action="https://buttondown.com/api/emails/embed-subscribe/sidharthjoly"
+            method="post" target="_blank">
+        <input type="hidden" name="embed" value="1">
+        <label class="sr" for="subemail">Email address</label>
+        <input class="input" type="email" name="email" id="subemail" required
+               autocomplete="email" placeholder="you@example.com">
+        <button class="btn btn-primary" type="submit">Subscribe</button>
+      </form>
+      <p class="note">Your address goes to Buttondown, which sends the email and
+        handles unsubscribing. Muster never sees it.</p>
+    </section>
   </main>
 
   <footer>
