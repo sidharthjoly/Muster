@@ -17,7 +17,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { z } from "zod";
 
-import { allJobs, dataJobs, health, isDataRole, manifest } from "./snapshot.ts";
+import { admits, allJobs, dataJobs, familiesOf, health, isDataRole, manifest }
+  from "./snapshot.ts";
 import type { Job, Manifest } from "./snapshot.ts";
 import { rank, readCV } from "./match.ts";
 
@@ -33,6 +34,11 @@ const present = (j: Job) => ({
   ats: j.ats_vendor,
   ...(j.salary_min ? { salary_min: j.salary_min, salary_max: j.salary_max,
                        salary_currency: j.salary_currency } : {}),
+  // Only where there is something to say: a missing key is an ad that is
+  // silent, the same convention the published rows follow.
+  ...(j.family ? { family: familiesOf(j) } : {}),
+  ...(j.work_rights ? { work_rights: j.work_rights } : {}),
+  ...(j.sponsorship ? { sponsorship: j.sponsorship } : {}),
 });
 
 const posted = (j: Job) => (j.posted_at || j.first_seen_at || "").toString()
@@ -101,6 +107,21 @@ function buildServer() {
       until: z.string().optional().describe("Posted strictly before this ISO date (YYYY-MM-DD)."),
       has_salary: z.boolean().optional()
         .describe("Only roles publishing a salary band — about 1 in 150 do."),
+      family: z.array(z.string()).optional().describe(
+        "Role families, from the job title; a role in any of them matches. One or "
+        + "more of 'data-engineer', 'data-analyst', 'data-scientist', 'ml-engineer', "
+        + "'business-analyst'. When set it replaces `scope` rather than narrowing "
+        + "it: every open role in the family is searched, including titles the "
+        + "broad data slice misses, such as 'MLOps Engineer'."),
+      work_rights: z.enum(["any", "no_pr", "no_ask"]).optional().describe(
+        "Read from each ad's own words. 'no_pr' hides roles whose ad asks for "
+        + "Australian citizenship (often via a security clearance) or permanent "
+        + "residency. 'no_ask' also hides ads asking for full work rights and ads "
+        + "that rule out visa sponsorship. Most ads say nothing either way, and a "
+        + "silent ad is kept — it is unanswered, not a yes."),
+      sponsors_visa: z.boolean().optional().describe(
+        "Only roles whose ad says it sponsors visas (for a skilled role usually the "
+        + "482, now the Skills in Demand visa). A small minority of ads say so."),
       sort: z.enum(["newest", "salary"]).optional(),
       limit: z.number().int().min(1).max(200).optional(),
       offset: z.number().int().min(0).optional(),
@@ -108,12 +129,20 @@ function buildServer() {
   }, async (a) => {
     const m = await manifest();
     const scope = a.scope ?? "data";
-    let rows = scope === "all" ? await allJobs() : await dataJobs();
+    // A stale family name is dropped rather than matched, as the site does.
+    const known = new Set((m.families ?? []).map(([slug]) => slug));
+    const fams = (a.family ?? []).filter((f) => !known.size || known.has(f));
+    // A family is itself a narrower definition of a data role, so it replaces
+    // the scope: the data slice misses titles it plainly covers.
+    let rows = fams.length || scope === "all" ? await allJobs() : await dataJobs();
 
     const terms = (a.q || "").toLowerCase().trim().split(/\s+/).filter(Boolean);
     const company = (a.company || "").toLowerCase();
+    const rights = a.work_rights === "any" ? undefined : a.work_rights;
 
     rows = rows.filter((j) => {
+      if (fams.length && !familiesOf(j).some((f) => fams.includes(f))) return false;
+      if (!admits(j, rights, a.sponsors_visa)) return false;
       if (a.remote && j.remote_type !== a.remote) return false;
       if (a.city && j.location_city !== a.city) return false;
       if (a.ats && j.ats_vendor !== a.ats) return false;
@@ -144,8 +173,9 @@ function buildServer() {
     const limit = a.limit ?? 25;
     return json(envelope(m, {
       total: rows.length,
-      scope: scope === "all" ? "open roles in Australia"
-                             : "open data/analytics/ML roles in Australia",
+      scope: fams.length ? `open ${fams.join(" / ")} roles in Australia`
+        : scope === "all" ? "open roles in Australia"
+        : "open data/analytics/ML roles in Australia",
       offset,
       results: rows.slice(offset, offset + limit).map(present),
     }));
@@ -213,6 +243,10 @@ function buildServer() {
       boards_failed: summary.failed,
       by_ats: h.vendors,
       roles_with_no_description: m.unrankable,
+      // How many open roles' ads state each work-rights requirement and each
+      // sponsorship answer. The rest say nothing.
+      ...(m.eligibility ? { work_rights_stated: m.eligibility.work_rights,
+                            sponsorship_stated: m.eligibility.sponsorship } : {}),
       caveats: [
         "Coverage is only employers hiring through the seven supported ATS "
           + "systems; anyone else is absent entirely.",

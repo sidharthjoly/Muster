@@ -52,7 +52,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from muster import feed, runs, search, skills  # noqa: E402
+from muster import eligibility, feed, roles, runs, search, skills  # noqa: E402
 from muster.store import DEFAULT_SQLITE  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -292,6 +292,14 @@ def build(db: Path) -> dict:
     for job, kw, sk in zip(jobs, search.keywords(bodies), found):
         job["kw"] = kw
         job["sk"] = skills.pack(sk)
+    # The role's family from its title, and what its ad says about who may
+    # apply. The second is the other thing the page needs from the body that
+    # it cannot get once the body is gone. Each is empty on most rows, and
+    # `_slim` drops it there.
+    for job, body in zip(jobs, bodies):
+        job["family"] = roles.pack(roles.families(job["title"]))
+        job["work_rights"], job["sponsorship"] = eligibility.read(
+            f"{job['title']}\n{body}")
     # Taken before `_slim`, which drops first_seen_at from every row that has
     # an employer's date — and first sighting is what the feed's weeks are.
     feed_rows = [dict(j) for j in jobs if search.is_data_role(j.get("title"))]
@@ -342,6 +350,19 @@ def build(db: Path) -> dict:
         # index and in every filter; they simply cannot be ranked, and the page
         # says so rather than quietly dropping them.
         "unrankable": sum(1 for j in jobs if not j.get("sk") and not j.get("kw")),
+        # The rail's role families as [slug, label], in rail order, and the
+        # words the row tags print for `work_rights` and `sponsorship`. Shipped
+        # so the page names them the way the code that assigned them does.
+        "families": roles.wire(),
+        "eligibility_labels": eligibility.LABELS,
+        # How many exported roles carry each value. Most carry none: an ad that
+        # says nothing about work rights is recorded as saying nothing.
+        "eligibility": {
+            "work_rights": {v: sum(1 for j in jobs if j.get("work_rights") == v)
+                            for v in eligibility.WORK_RIGHTS},
+            "sponsorship": {v: sum(1 for j in jobs if j.get("sponsorship") == v)
+                            for v in eligibility.SPONSORSHIP},
+        },
         "pulse": pulse,
     }
     # The data slice, written as its own file. The page never reads it — it
