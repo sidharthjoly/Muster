@@ -60,6 +60,11 @@ class Handler(SimpleHTTPRequestHandler):
             return self._page()
         if url.path in ("/runs", "/runs.html"):
             return self._page("runs.html")
+        # Before the /api/ prefix below, which it does not share: that is the
+        # JSON this server answers, this is the page documenting the published
+        # files and the MCP server.
+        if url.path in ("/api", "/api.html"):
+            return self._page("api.html")
 
         # A connection per request: SQLite objects are not thread-safe and
         # opening the file is cheap.

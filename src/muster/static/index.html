@@ -25,8 +25,8 @@
      rather than linked, because the export copies named page files into
      `site/` and a sibling stylesheet would neither be copied nor resolve from
      a file:// open. Only the subset this page uses is carried over. */
-  /* ==== SHARED WITH THE OTHER PAGE — START. Edit both, then run the
-     check in runs.html's header comment. ==== */
+  /* ==== SHARED WITH THE OTHER PAGES — START. Edit all three, then run
+     tests/test_static_pages.py. ==== */
   :root {
     --color-bg:#f2f2f3;
     --color-surface:#e9e9ea;
@@ -133,7 +133,7 @@
   .nav a:hover, .nav a[aria-current='page'] { color:var(--color-accent); }
   header.bar { border-bottom:1px solid var(--color-divider);
     background:var(--color-bg); }
-  /* ==== SHARED WITH THE OTHER PAGE — END ==== */
+  /* ==== SHARED WITH THE OTHER PAGES — END ==== */
 
   /* — the shell — */
   .wrap { max-width:1160px; width:100%; margin:0 auto;
@@ -494,11 +494,14 @@
     <nav class="nav">
       <a class="nav-brand" href="./"><svg class="nav-mark" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 9 L38 9 A5 5 0 0 1 43 14 L43 34 A5 5 0 0 1 38 39 L22 39 A5 5 0 0 1 17 34 L17 29"/><path d="M17 19 L17 14 A5 5 0 0 1 22 9"/><path d="M3 10 L15 20"/><path d="M3 38 L15 28"/><circle cx="30" cy="24" r="3.4" fill="currentColor" stroke="none"/></svg>MUSTER</a>
       <!-- The composition drew four destinations and two account actions. This
-           site is two pages, but the ingest-health console (runs.html) is for
-           whoever runs the index, not for people looking for work, so it is
-           deliberately left out of this nav. It is linked from the README. -->
+           links what exists rather than shipping dead anchors: the index, the
+           weekly email, and the API reference (api.html). The ingest-health
+           console (runs.html) is for whoever runs the index, not for people
+           looking for work, so it is deliberately left out; the README links
+           it. -->
       <a href="./" aria-current="page">Roles</a>
       <a href="#subscribe">Weekly email</a>
+      <a href="api.html">API</a>
       <div class="acts" style="display:flex;align-items:center;gap:var(--space-2);margin-left:var(--space-4)">
         <a class="btn btn-secondary" href="https://github.com/sidharthjoly/Muster">Method</a>
       </div>

@@ -31,14 +31,9 @@
      copies named page files into `site/` and a sibling stylesheet would
      neither be copied nor resolve from a file:// open.
 
-     Nothing enforces that the two copies agree, so edit both. The block is
-     fenced by START/END marker comments in each file; this compares them and
-     is silent when they match (the pattern is anchored to the start of the
-     line so it matches the markers, not this sentence):
-
-         cd src/muster/static
-         diff <(sed -n '/^  \/\* ==== SHARED/,/END ====/p' index.html) \
-              <(sed -n '/^  \/\* ==== SHARED/,/END ====/p' runs.html)
+     There are three copies — index.html, this page and api.html — fenced by
+     START/END marker comments in each, so edit all three.
+     tests/test_static_pages.py fails when they disagree.
 
      Everything after the END marker is this page's own.
 
@@ -47,8 +42,8 @@
      as accent, neutral and a desaturated clay — the clay is the only hue on
      the site outside the steel, and it is here because "failed" has to be
      legible as bad without reading the number next to it. */
-  /* ==== SHARED WITH THE OTHER PAGE — START. Edit both, then run the
-     check in runs.html's header comment. ==== */
+  /* ==== SHARED WITH THE OTHER PAGES — START. Edit all three, then run
+     tests/test_static_pages.py. ==== */
   :root {
     --color-bg:#f2f2f3;
     --color-surface:#e9e9ea;
@@ -155,7 +150,7 @@
   .nav a:hover, .nav a[aria-current='page'] { color:var(--color-accent); }
   header.bar { border-bottom:1px solid var(--color-divider);
     background:var(--color-bg); }
-  /* ==== SHARED WITH THE OTHER PAGE — END ==== */
+  /* ==== SHARED WITH THE OTHER PAGES — END ==== */
 
 
   /* — status roles. The one place this site carries a hue that is not the
@@ -411,6 +406,7 @@
   <nav class="nav">
     <a class="nav-brand" href="./"><svg class="nav-mark" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 9 L38 9 A5 5 0 0 1 43 14 L43 34 A5 5 0 0 1 38 39 L22 39 A5 5 0 0 1 17 34 L17 29"/><path d="M17 19 L17 14 A5 5 0 0 1 22 9"/><path d="M3 10 L15 20"/><path d="M3 38 L15 28"/><circle cx="30" cy="24" r="3.4" fill="currentColor" stroke="none"/></svg>MUSTER</a>
     <a href="./">Roles</a>
+    <a href="api.html">API</a>
     <a href="runs.html" aria-current="page">Coverage</a>
     <div class="acts" style="display:flex;align-items:center;gap:var(--space-2);margin-left:var(--space-4)">
       <a class="btn btn-secondary" href="https://github.com/sidharthjoly/Muster">Method</a>

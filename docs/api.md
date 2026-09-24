@@ -1,5 +1,7 @@
 # The data, as an endpoint
 
+This reference is also on the site, with the MCP tools beside it: <https://muster.sidharthjoly.com/api.html>.
+
 Muster puts its Australian data in a plain JSON file on the same host as the website. There are no keys, accounts, or rate limits. This is because there is no server. These are static files on a CDN. They use `access-control-allow-origin: *`, so a browser, script, or agent can read them directly.
 
 ```

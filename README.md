@@ -199,7 +199,7 @@ The full engineering record is in **[docs/build-log.md](docs/build-log.md)**. Th
 - **The closure history is new.** Muster only knows a role closed if it saw it happen. It started watching on 11 September 2026. Older weeks only show open roles. The chart marks these as "unwatched" instead of showing zero. This gets better over time and cannot be added to old data.
 - **Locations are from the employer's own field.** We show them as they are. One company posting many jobs in one city can take over a section. For example, Bjak has about one-eighth of all open data roles, all in Sydney. This is three times more than Commonwealth Bank.
 - **About 5% of roles have no description.** You can search for these by title and employer. However, there is no text to match against a résumé. The page says so.
-- **The website is a snapshot.** It is rebuilt four times a day. Both pages show the build time. The [`/runs`](https://muster.sidharthjoly.com/runs.html) page counts "N hours ago" based on the export time, not the current time.
+- **The website is a snapshot.** It is rebuilt four times a day. Every page shows the build time. The [`/runs`](https://muster.sidharthjoly.com/runs.html) page counts "N hours ago" based on the export time, not the current time.
 
 Is the index incorrect or missing an employer you expect to see?
 [Open an issue](https://github.com/sidharthjoly/Muster/issues).

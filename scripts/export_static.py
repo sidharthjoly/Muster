@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export the index as a static site — the same two pages, no Python behind them.
+"""Export the index as a static site — the same pages, no Python behind them.
 
 The pages in `src/muster/static/` already run in two modes: served by
 `muster.web` they call `/api/*`, and served as plain files they look for
@@ -26,7 +26,7 @@ alone. The cap is at its recall limit, so this file shrinks by dropping columns,
 never by pruning vocabulary.
 
 A static export is a snapshot: it is stale the moment the next sweep lands.
-Both pages therefore carry the export timestamp, and `/runs` says outright that
+Every page therefore carries the export timestamp, and `/runs` says outright that
 its "N hours ago" figures are counted from the export rather than from now.
 Nothing here re-exports on its own — a GitHub Actions runner cannot see
 `data/jobs.db` (see docs/build-log.md), so this runs locally, from the same
@@ -58,7 +58,7 @@ from muster.store import DEFAULT_SQLITE  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT / "src" / "muster" / "static"
 SITE = ROOT / "site"
-PAGES = ("index.html", "runs.html")
+PAGES = ("index.html", "runs.html", "api.html")
 # The mark. Copied beside the pages rather than inlined into them: the nav
 # carries its own copy of the geometry so the header paints with no second
 # request, and these three are what everything else points at — `favicon.svg`

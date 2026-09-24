@@ -1,5 +1,7 @@
 # The MCP endpoint
 
+This reference is also on the site, with the data files beside it: <https://muster.sidharthjoly.com/api.html>.
+
 Agents can use [MCP](https://modelcontextprotocol.io) to access Muster's index. This lets a model search for roles, look up specific details, check the index's health, and rank a résumé without keeping the full JSON file in its memory.
 
 ```
@@ -82,7 +84,7 @@ Search for open jobs in Australia. By default, it shows jobs in data, analytics,
 | `company` | string | Matches any part of the employer's name. |
 | `ats` | string | Choose one: `greenhouse`, `workday`, `lever`, `ashby`, `smartrecruiters`, `oracle`, or `eightfold`. |
 | `remote` | string | Must match the employer's field exactly. Often says `unknown`. |
-| `since` / `until` | ISO date | Jobs posted on or after / before a date. Use `YYYY-MM-DD`. |
+| `since` / `until` | ISO date | Jobs posted on or after / strictly before a date. Use `YYYY-MM-DD`. |
 | `has_salary` | boolean | Only shows jobs that list a salary range. Less than 1% of jobs have this. |
 | `sort` | `newest` \| `salary` | Default is `newest`. `salary` puts jobs with no salary at the end. |
 | `limit` | integer | Choose 1 to 200. Default is 25. |
@@ -155,6 +157,7 @@ An unknown id is not an error. It returns a result that says it is unknown:
 
 No parameters. It returns what the index contains and its freshness. This includes:
 * open counts
+* counts across the whole index worldwide (`index_totals`)
 * boards watched
 * the last sweep
 * how old the oldest board is
@@ -172,20 +175,25 @@ An incomplete board cannot close anything until it is fully loaded.
 
 ```json
 {
-  "open_roles_australia": 9146,
+  "open_roles_australia": 9160,
   "open_data_roles_australia": 485,
+  "index_totals": {
+    "jobs": 334121, "open": 311210, "au_open": 9160,
+    "closed": 22911, "boards": 911, "vendors": 7
+  },
   "boards_watched": 925,
-  "last_sweep": "2026-09-18T08:29:20.116563+00:00",
-  "oldest_board_age_hours": 84.05452006,
-  "boards_failed": 9,
+  "last_sweep": "2026-09-18T22:19:51.092042+00:00",
+  "oldest_board_age_hours": 97.32841436,
+  "boards_failed": 11,
   "by_ats": [
     {
-      "vendor": "workday", "boards": 536, "ok": 500, "failed": 4,
-      "incomplete": 32, "fetched": 249838, "new": 24214, "closed": 10447,
-      "reopened": 142, "last_run": "2026-09-18T08:08:25.139370+00:00"
+      "vendor": "workday", "boards": 536, "ok": 500, "failed": 5,
+      "incomplete": 31, "fetched": 248068, "new": 24423, "closed": 10304,
+      "reopened": 176, "last_run": "2026-09-18T22:19:51.092042+00:00",
+      "oldest_run": "2026-09-15T02:18:06.373022+00:00"
     }
   ],
-  "roles_with_no_description": 475,
+  "roles_with_no_description": 473,
   "caveats": ["...three entries naming the coverage limits..."]
 }
 ```
@@ -212,10 +220,12 @@ Ranks open jobs against a résumé using the same scoring system as the website:
   },
   "total_ranked": 485,
   "matched": 184,
+  "unrankable_roles_in_index": 473,
   "results": [
     {
       "id": "smartrecruiters:carsales:744000149506190",
       "title": "Senior Data Engineer - Data Platform & Engineering",
+      "...": "the search_roles fields",
       "matched_on": ["dbt", "snowflake", "sql", "python"],
       "title_match": null,
       "stretch": false,
@@ -229,6 +239,8 @@ Ranks open jobs against a résumé using the same scoring system as the website:
 `read_from_resume` is what the matcher used. This helps identify why a ranking is bad instead of guessing. `level` is a score from 0 to 5 (from graduate to executive). It is `null` if the resume does not list a level.
 
 **This ranks items and never hides them.** `total_ranked` shows every role in the list. `matched` shows how many scored higher than zero. If a role has nothing in common with the résumé, it goes to the bottom of the list. It will have an empty `matched_on` instead of being removed.
+
+`unrankable_roles_in_index` counts roles with no description to score. They are in the index but cannot rank.
 
 `relative_score` compares each role to the best match in that specific response. It is not a probability. You cannot compare scores across different calls. Muster has never seen an application, interview, or hire, so there is no number for that.
 
