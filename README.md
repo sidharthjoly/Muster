@@ -99,6 +99,12 @@ There were also several hundred smaller jobs. Most of these were in Sydney (279)
 
 **The dial** is the chart at the top. Dragging across it filters the dates. It shows when roles open and close each week. Selecting a range shows only the roles posted in those weeks.
 
+**Role.** Pick Data Engineer, Data Analyst, Data Scientist, ML / AI Engineer or Business Analyst, or several at once. The role comes from the job title. A pick looks through every open role, not only the data list. That way an "MLOps Engineer" still counts as an ML engineer.
+
+**Work rights.** Many Australian ads say who may apply. Some want Australian citizens only, usually because the role needs a security clearance. Some want citizens or permanent residents. Some want full work rights. Choose **No citizenship or PR ask** to hide the first two. Choose **No work-rights ask** to also hide the third, and ads that say they cannot sponsor a visa. Each row is tagged with what its ad says. Most ads say nothing at all. A role with no tag has not answered the question, so check the ad before you apply.
+
+**Visa sponsorship.** Tick **Says it sponsors visas** to see only roles whose ad says the employer will sponsor one. For a skilled role this is usually the 482, now called the Skills in Demand visa. Only a small share of ads say this, so a role without the tag may still sponsor.
+
 **Résumé matching.** Upload a PDF or paste your text. We rank every open job based on your skills. Each row shows the specific words that matched. This helps you see why a job is ranked highly. The list is **ranked, not filtered**. We show every job, even if it has a low score. If a job has no matches, the list will say so on that row.
 
 **What your résumé is missing.** Once a résumé is loaded, a line under it lists the skills that the matching jobs mention most and your résumé does not. It counts only jobs that already match you, and it follows your filters. Pick Melbourne, and you see the gaps for Melbourne jobs. A mention in an ad is not a requirement.
@@ -234,7 +240,7 @@ npm install
 npx wrangler dev                   # http://127.0.0.1:8787/mcp
 ```
 
-Tests: `uv run pytest` — 320 tests total. No internet connection is needed.
+Tests: `uv run pytest` — 495 tests total. No internet connection is needed.
 
 ## License
 

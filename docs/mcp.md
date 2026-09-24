@@ -84,6 +84,9 @@ Search for open jobs in Australia. By default, it shows jobs in data, analytics,
 | `remote` | string | Must match the employer's field exactly. Often says `unknown`. |
 | `since` / `until` | ISO date | Jobs posted on or after / before a date. Use `YYYY-MM-DD`. |
 | `has_salary` | boolean | Only shows jobs that list a salary range. Less than 1% of jobs have this. |
+| `family` | array of strings | Role families, read from the job title. A job matches if it is in any of them: `data-engineer`, `data-analyst`, `data-scientist`, `ml-engineer`, `business-analyst`. Setting it **replaces** `scope`, so every open job in the family is searched, including titles the data slice misses, like `MLOps Engineer`. |
+| `work_rights` | `any` \| `no_pr` \| `no_ask` | Read from the ad's own words. `no_pr` hides jobs whose ad asks for Australian citizenship (often through a security clearance) or permanent residency. `no_ask` also hides jobs that ask for full work rights, and jobs that say they cannot sponsor a visa. An ad that says nothing is kept. |
+| `sponsors_visa` | boolean | Only jobs whose ad says it sponsors visas. For a skilled role this is usually the 482, now called the Skills in Demand visa. |
 | `sort` | `newest` \| `salary` | Default is `newest`. `salary` puts jobs with no salary at the end. |
 | `limit` | integer | Choose 1 to 200. Default is 25. |
 | `offset` | integer | Used for paging. Use `total` to see how far you can go. |
@@ -114,6 +117,18 @@ Search for open jobs in Australia. By default, it shows jobs in data, analytics,
 ```
 
 `total` counts every match, not the page. Rows only have `salary_min`, `salary_max`, and `salary_currency` if the employer shared a salary range. If these keys are missing, it means the salary was not published. This is the most common case.
+
+Three more keys follow the same rule. They appear only when there is something to say:
+
+* `family`: the role families the title belongs to, as a list.
+* `work_rights`: `citizen`, `citizen_or_pr`, or `full_rights`, as the ad states it.
+* `sponsorship`: `offered` or `not_offered`, as the ad states it.
+
+A missing `work_rights` or `sponsorship` means the ad said nothing. It does not mean the job is open to everyone. Treat it as unanswered, and say so if you pass it on.
+
+```json
+{"name": "search_roles", "arguments": {"family": ["data-engineer", "data-analyst"], "work_rights": "no_pr"}}
+```
 
 ## `get_role`
 
@@ -189,6 +204,8 @@ An incomplete board cannot close anything until it is fully loaded.
   "caveats": ["...three entries naming the coverage limits..."]
 }
 ```
+
+Exports built after the work-rights filters were added also return `work_rights_stated` and `sponsorship_stated`. These are counts of open roles whose ad states each value, such as `{"citizen": …, "citizen_or_pr": …, "full_rights": …}`. Every other ad says nothing either way.
 
 ## `match_resume`
 

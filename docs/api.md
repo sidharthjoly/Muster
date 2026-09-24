@@ -45,6 +45,9 @@ Both `jobs.json` and `jobs-data.json` are flat arrays of these items. **If a key
 | `salary_min`, `salary_max`, `salary_currency` | ~0.6% | A structured salary range. Only 53 roles have this. Filtering by this will hide most results. |
 | `kw` | ~95% | The words used to index the job. These are rare words from the ad. Words that more than 4% of the corpus carries are dropped, so common tools are deliberately absent. |
 | `sk` | ~35% | Skills found in the ad. These come from a list in `manifest.json`. **Ranking uses this, not `kw`.** |
+| `family` | some rows | Role families from the title, space-separated: `data-engineer`, `data-analyst`, `data-scientist`, `ml-engineer`, `business-analyst`. A title can be in two. Most roles are in none. |
+| `work_rights` | some rows | What the ad says about who may apply: `citizen` (Australian citizens only, including every role that needs a security clearance), `citizen_or_pr` (citizens or permanent residents), or `full_rights` (full work rights, with no status named). |
+| `sponsorship` | a few rows | What the ad says about visa sponsorship: `offered` or `not_offered`. |
 
 `first_seen_at` and `location_raw` are fallback fields in that table. Only read them if the primary fields (`posted_at` and `location_city`) are missing. Never read them as standalone fields.
 
@@ -57,6 +60,30 @@ Workday creates the URL slug when a requisition is first made. It never changes 
 The `title` is what the ATS shows now. The URL shows what the job was called when it first opened.
 
 There is no description field. The system reads the ad body during export for `kw` and `sk` and then removes it. This part makes up most of the data, and the site does not show a summary.
+
+## Who may apply
+
+`work_rights` and `sponsorship` are read from the ad's own text at export time. The description is dropped after that, like `kw` and `sk`. The reader is in [`muster/eligibility.py`](../src/muster/eligibility.py). It works one sentence at a time and skips mentions that are not requirements:
+* preferences, like "Citizen/PR holders are preferred"
+* equal-opportunity boilerplate that lists citizenship among things an employer ignores
+* "sponsors" who are people, like project sponsors and executive sponsorship
+
+**A missing key means the ad said nothing.** It does not mean the role is open to everyone. Most ads say nothing either way. If an ad states more than one requirement, the strictest one is kept. If an ad both offers and rules out sponsorship, it is recorded as `not_offered`.
+
+The site filters these values like this. The MCP server does the same.
+
+```js
+// "no_pr": hide citizen and citizen_or_pr. "no_ask": hide every stated
+// requirement and every not_offered. A silent ad passes both.
+const admits = (j, rights, sponsors) =>
+  !(rights === 'no_pr' && ['citizen', 'citizen_or_pr'].includes(j.work_rights)) &&
+  !(rights === 'no_ask' && (j.work_rights || j.sponsorship === 'not_offered')) &&
+  !(sponsors && j.sponsorship !== 'offered');
+```
+
+`manifest.json` has the labels the site prints for each value, in `eligibility_labels`. It also has how many roles carry each value, in `eligibility`. The family names are in `families`, as `[slug, label]` pairs in the site's order.
+
+Choosing a family on the site **replaces** the data-slice rule below instead of narrowing it. Each family is already a stricter definition of a data role. The slice misses some titles a family covers, like "MLOps Engineer", so filter by family over `jobs.json`, not `jobs-data.json`.
 
 ## Deriving the data slice yourself
 

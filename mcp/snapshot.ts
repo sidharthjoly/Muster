@@ -40,6 +40,12 @@ type Job = {
   salary_currency?: string;
   kw?: string;
   sk?: string;
+  /** Space-separated role family slugs, from the title. See `muster/roles.py`. */
+  family?: string;
+  /** What the ad says about who may apply: "citizen" | "citizen_or_pr" | "full_rights". */
+  work_rights?: string;
+  /** What the ad says about visa sponsorship: "offered" | "not_offered". */
+  sponsorship?: string;
 };
 
 type Manifest = {
@@ -58,6 +64,13 @@ type Manifest = {
   skill_df: Record<string, number>;
   unrankable: number;
   pulse: unknown;
+  /** [slug, label] per role family, in the site's rail order. */
+  families?: [string, string][];
+  eligibility_labels?: Record<string, string>;
+  eligibility?: {
+    work_rights: Record<string, number>;
+    sponsorship: Record<string, number>;
+  };
 };
 
 type Entry<T> = { value: T; etag: string | null; at: number };
@@ -146,6 +159,24 @@ export function isDataRole(title: string | undefined, m: Manifest): boolean {
   const s = ` ${(title || "").toLowerCase()} `;
   if (m.data_terms.some((t) => s.includes(t))) return true;
   return s.includes("analyst") && !m.analyst_exclude.some((x) => s.includes(x));
+}
+
+/** The families a row was filed under at export. */
+export const familiesOf = (j: Job): string[] =>
+  (j.family || "").split(" ").filter(Boolean);
+
+/**
+ * `rights` and `sponsors` as `search._filters` builds them in SQL and the page
+ * builds them in JS. "no_pr" drops the two statuses a visa holder cannot meet;
+ * "no_ask" drops every stated work-rights requirement and every "no
+ * sponsorship". An ad that says nothing passes both, because it said nothing.
+ */
+export function admits(j: Job, rights?: string, sponsors?: boolean): boolean {
+  const wr = j.work_rights, sp = j.sponsorship;
+  if (rights === "no_pr" && (wr === "citizen" || wr === "citizen_or_pr")) return false;
+  if (rights === "no_ask" && (wr || sp === "not_offered")) return false;
+  if (sponsors && sp !== "offered") return false;
+  return true;
 }
 
 export type { Job, Manifest };

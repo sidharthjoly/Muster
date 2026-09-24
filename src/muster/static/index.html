@@ -433,6 +433,22 @@
     font-weight:500; letter-spacing:.06em; text-transform:uppercase;
     vertical-align:2px; background:var(--color-accent); color:var(--color-bg); }
 
+  /* — what the ad says about who may apply. The two restrictions are filled in
+       the neutral the On-site tag uses; the softer asks are only outlined; and
+       the one promise is outlined in the accent, like Remote, because it is the
+       tag a reader on a visa is scanning the list for. Colours are set rather
+       than inherited so a hovered row's accent title does not recolour them. — */
+  .elig { display:inline-block; margin-left:7px; padding:0 5px; font-size:10.5px;
+    font-weight:500; letter-spacing:.02em; vertical-align:1px; white-space:nowrap;
+    border:1px solid transparent; }
+  .elig.e-citizen, .elig.e-citizen_or_pr { background:var(--color-neutral-200);
+    color:var(--color-neutral-800); }
+  .elig.e-full_rights, .elig.e-not_offered { border-color:var(--color-divider);
+    color:color-mix(in srgb, var(--color-text) 60%, transparent); }
+  .elig.e-offered { border-color:var(--color-accent); color:var(--color-accent-700); }
+  .cities button:disabled { cursor:default; opacity:.45; }
+  .cities button:disabled:hover { background:transparent; }
+
   /* — skeleton and empty state — */
   .sk td { padding:var(--space-3) var(--space-2); }
   .sk i { display:block; height:13px; background:var(--color-neutral-300);
@@ -545,6 +561,16 @@
           <p class="note" id="freshnote"></p>
         </div>
 
+        <!-- Hidden until the index says it carries families, so an export built
+             before them shows no control it cannot act on. -->
+        <div id="fambox" hidden>
+          <h6>Role</h6>
+          <div class="cities" id="fams"></div>
+          <p class="note">Read from the job title. Pick one or several. A pick
+            looks through every open role for that title, not only the data
+            &amp; AI list.</p>
+        </div>
+
         <div>
           <h6>Location</h6>
           <div class="cities" id="cities"></div>
@@ -560,6 +586,41 @@
           </div>
           <p class="note" id="worknote">Work type is the employer&rsquo;s own
             <b>workplaceType</b> field, not a recruiter&rsquo;s tickbox.</p>
+        </div>
+
+        <!-- Both read from the ad's own words at export time. The notes carry the
+             counts, because "most ads say nothing" is what decides how far
+             either control can be trusted. -->
+        <div id="rightsbox" hidden>
+          <h6>Work rights</h6>
+          <div id="rights">
+            <label class="paid">
+              <input type="radio" name="rights" value="">
+              <span>Any</span>
+              <em id="rights-any"></em>
+            </label>
+            <label class="paid">
+              <input type="radio" name="rights" value="no_pr">
+              <span>No citizenship or PR ask</span>
+              <em id="rights-no_pr"></em>
+            </label>
+            <label class="paid">
+              <input type="radio" name="rights" value="no_ask">
+              <span>No work-rights ask</span>
+              <em id="rights-no_ask"></em>
+            </label>
+          </div>
+          <p class="note" id="rightsnote"></p>
+        </div>
+
+        <div id="sponsorbox" hidden>
+          <h6>Visa sponsorship</h6>
+          <label class="paid">
+            <input type="checkbox" id="sponsors">
+            <span>Says it sponsors visas</span>
+            <em id="sponsorsn"></em>
+          </label>
+          <p class="note" id="sponsorsnote"></p>
         </div>
 
         <div>
@@ -733,8 +794,16 @@ const WEEKS = 16;
 // `fresh` is kept out of the URL on purpose: "new to me" is a fact about this
 // browser, and a shared link carrying it would mean something different, or
 // nothing, to whoever opened it.
-const state = { q:'', cat:'data', city:'', work:'', paid:false, fresh:false,
-                a:0, b:WEEKS - 1, sort:'', offset:0 };
+// `fam` is a list because a hunter's target usually is: data engineer *or*
+// analytics engineer, analyst *or* scientist.
+const state = { q:'', cat:'data', fam:[], city:'', work:'', rights:'', sponsors:false,
+                paid:false, fresh:false, a:0, b:WEEKS - 1, sort:'', offset:0 };
+const RIGHTS = ['no_pr', 'no_ask'];
+// [slug, label] per role family, and the words for each `work_rights` and
+// `sponsorship` value. Both come from the Python that assigned them — the
+// manifest in static mode, the first page of facets when served.
+let FAMILIES = [];
+let TAGS = {};
 // The sorts the query layer actually implements (search.ORDERS). `relevance`
 // needs an FTS expression to rank against, so it is offered only while the box
 // has something in it — search() silently falls back to newest otherwise.
@@ -748,6 +817,14 @@ function readURL() {
   const u = new URLSearchParams(location.search);
   state.q = u.get('q') || '';
   state.cat = u.get('roles') === 'all' ? 'all' : 'data';
+  // One `role` per family, repeated, so a shared link reads
+  // `?role=data-engineer&role=data-analyst` rather than an escaped comma.
+  // Checked against the families the index knows once it has said which those
+  // are (see `knownFilters`); here only the shape is.
+  state.fam = [...new Set(u.getAll('role').flatMap(v => v.split(','))
+    .filter(f => /^[a-z]+(?:-[a-z]+)*$/.test(f)))];
+  state.rights = RIGHTS.includes(u.get('rights')) ? u.get('rights') : '';
+  state.sponsors = u.get('sponsor') === '1';
   state.city = u.get('city') || '';
   state.work = ['remote','hybrid','onsite'].includes(u.get('work')) ? u.get('work') : '';
   // Old links still mean what they meant: `new=1` was "posted this week", which
@@ -766,8 +843,11 @@ function writeURL() {
   const u = new URLSearchParams();
   if (state.q) u.set('q', state.q);
   if (state.cat === 'all') u.set('roles', 'all');
+  for (const f of state.fam) u.append('role', f);
   if (state.city) u.set('city', state.city);
   if (state.work) u.set('work', state.work);
+  if (state.rights) u.set('rights', state.rights);
+  if (state.sponsors) u.set('sponsor', '1');
   if (state.paid) u.set('pay', '1');
   if (state.sort) u.set('sort', state.sort);
   if (!whole()) u.set('w', lo() + '-' + hi());
@@ -778,7 +858,8 @@ function writeURL() {
 const lo = () => Math.min(state.a, state.b);
 const hi = () => Math.max(state.a, state.b);
 const whole = () => lo() === 0 && hi() === WEEKS - 1;
-const dirty = () => !!(state.q || state.city || state.work || state.paid || state.fresh
+const dirty = () => !!(state.q || state.fam.length || state.city || state.work
+                       || state.rights || state.sponsors || state.paid || state.fresh
                        || !whole());
 
 // The window is a pair of absolute dates, not an age. The export is read for
@@ -797,8 +878,11 @@ function params(offset = 0) {
   const p = new URLSearchParams();
   if (state.q) p.set('q', state.q);
   if (state.cat === 'data') p.set('data_only', '1');
+  if (state.fam.length) p.set('family', state.fam.join(','));
   if (state.city) p.set('city', state.city);
   if (state.work) p.set('remote', state.work);
+  if (state.rights) p.set('rights', state.rights);
+  if (state.sponsors) p.set('sponsors', '1');
   if (state.paid) p.set('has_salary', '1');
   if (state.fresh) p.set('fresh', '1');
   const w = window_();
@@ -861,7 +945,7 @@ function rowHTML(j) {
   // loaded: a column that came and went would reflow every other one.
   return `<td class="t">
       <a href="${url}" target="_blank" rel="noopener">${esc(j.title)}${
-        isNew(j) ? '<span class="nw">new</span>' : ''}</a>${
+        isNew(j) ? '<span class="nw">new</span>' : ''}${eligHTML(j)}</a>${
         CV.on ? hitsHTML(j) : ''}
     </td>
     <td>${esc(j.company || '')}</td>
@@ -873,6 +957,14 @@ function rowHTML(j) {
     <td class="mcol">${CV.on ? meterHTML(j) : ''}</td>
     <td style="text-align:right"><a class="apply" href="${url}"
       target="_blank" rel="noopener">Apply &rarr;</a></td>`;
+}
+
+// What the ad itself says about who may apply, beside the title. Only what it
+// says: a row with no tag is an ad that is silent, not one that said yes.
+function eligHTML(j) {
+  return [j.work_rights, j.sponsorship].filter(v => v && TAGS[v]).map(v =>
+    `<span class="elig e-${esc(v)}" title="From the ad&rsquo;s own wording">${
+      esc(TAGS[v])}</span>`).join('');
 }
 
 // The third line and the meter, added to a row only while a resume is loaded.
@@ -913,6 +1005,9 @@ async function detectStatic() {
     STATIC.data = m.data_terms; STATIC.exclude = m.analyst_exclude;
     STATIC.jobs = await (await fetch('data/jobs.json')).json();
     STATIC.on = true;
+    FAMILIES = m.families || [];
+    TAGS = m.eligibility_labels || {};
+    knownFilters();
     // An export built before the dial existed has no pulse; the page drops the
     // chart rather than throwing on the way to drawing it.
     if (m.pulse && m.pulse.weeks) PULSE = m.pulse;
@@ -933,16 +1028,55 @@ const isDataRole = t => {
 const posted = j => (j.posted_at || j.first_seen_at || '').toString()
   .replace(' ', 'T').slice(0, 10);
 
+/* ---------- who may apply ---------- */
+
+// The families a row was filed under at export, from its title.
+const famOf = j => (j.family || '').split(' ').filter(Boolean);
+
+// A shared link can name a family this index does not have, or carry these
+// filters to an export built before them. Either way the filter is dropped
+// rather than kept as one that silently matches nothing behind a control the
+// rail does not draw. Called once the index has said what it carries.
+function knownFilters() {
+  const known = new Set(FAMILIES.map(([k]) => k));
+  const fam = state.fam.filter(f => known.has(f));
+  const asks = Object.keys(TAGS).length > 0;
+  if (fam.length === state.fam.length && (asks || (!state.rights && !state.sponsors)))
+    return;
+  state.fam = fam;
+  if (!asks) { state.rights = ''; state.sponsors = false; }
+  writeURL();
+}
+
+// `rights` as `search._filters` builds it in SQL. "no_pr" drops the two
+// statuses a visa holder cannot meet; "no_ask" drops every stated requirement
+// and every "no sponsorship", which is what is left to someone who needs one.
+function admits(j, rights, sponsors) {
+  const wr = j.work_rights, sp = j.sponsorship;
+  if (rights === 'no_pr' && (wr === 'citizen' || wr === 'citizen_or_pr')) return false;
+  if (rights === 'no_ask' && (wr || sp === 'not_offered')) return false;
+  if (sponsors && sp !== 'offered') return false;
+  return true;
+}
+
+/* ---------- end of who may apply ---------- */
+
 function searchLocal(p) {
   const q = (p.get('q') || '').toLowerCase().trim();
   // FTS5 prefix-matches each term; substring matching here is slightly looser.
   const terms = q ? q.split(/\s+/).filter(Boolean) : [];
   const since = p.get('since'), until = p.get('until');
+  const fams = (p.get('family') || '').split(',').filter(Boolean);
+  const rights = p.get('rights') || '', sponsors = !!p.get('sponsors');
 
   const rows = STATIC.jobs.filter(j => {
-    if (p.get('data_only') && !isDataRole(j.title)) return false;
+    // A family replaces the data-slice test rather than narrowing it, as
+    // `_filters` does: it is itself a stricter definition of a data role.
+    if (fams.length) { if (!famOf(j).some(f => fams.includes(f))) return false; }
+    else if (p.get('data_only') && !isDataRole(j.title)) return false;
     if (p.get('remote') && j.remote_type !== p.get('remote')) return false;
     if (p.get('city') && j.location_city !== p.get('city')) return false;
+    if (!admits(j, rights, sponsors)) return false;
     if (p.get('has_salary') && !j.salary_min) return false;
     if (p.get('fresh') && !isNew(j)) return false;
     // String comparison on YYYY-MM-DD, the same shape the SQL uses, so both
@@ -1007,10 +1141,28 @@ function localFacets() {
     for (const j of scope) { const v = get(j); if (v) c.set(v, (c.get(v) || 0) + 1); }
     return [...c].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ key:k, n:v }));
   };
-  return { cities:tally(j => j.location_city).slice(0, 30),
-           remote:tally(j => j.remote_type), scope:scope.length,
-           salaried:scope.filter(j => j.salary_min).length,
-           fresh:scope.filter(isNew).length };
+  // Families are counted across every role rather than the scope, because a
+  // pick replaces the scope: this is the number a click will actually show.
+  const fam = new Map(FAMILIES.map(([k]) => [k, 0]));
+  for (const j of STATIC.jobs)
+    for (const f of famOf(j)) if (fam.has(f)) fam.set(f, fam.get(f) + 1);
+  const out = { cities:tally(j => j.location_city).slice(0, 30),
+                remote:tally(j => j.remote_type), scope:scope.length,
+                salaried:scope.filter(j => j.salary_min).length,
+                fresh:scope.filter(isNew).length,
+                families:FAMILIES.map(([key, label]) => ({ key, label, n:fam.get(key) })) };
+  // An export built before the eligibility fields has no labels for them, and
+  // every row would count as silent: the rail would print a confident zero.
+  if (!Object.keys(TAGS).length) return out;
+  const rights = { citizen:0, citizen_or_pr:0, full_rights:0 };
+  const sponsorship = { offered:0, not_offered:0 };
+  for (const j of scope) {
+    if (j.work_rights in rights) rights[j.work_rights]++;
+    if (j.sponsorship in sponsorship) sponsorship[j.sponsorship]++;
+  }
+  return { ...out, rights, sponsorship,
+           rights_open:{ no_pr:scope.filter(j => admits(j, 'no_pr')).length,
+                         no_ask:scope.filter(j => admits(j, 'no_ask')).length } };
 }
 
 /* ---------- resume matching ---------- */
@@ -1808,6 +1960,12 @@ async function load(more = false) {
   if (mine !== seq) return;
 
   total = d.total;
+  // Served, the family labels and the tag wording arrive with the first page's
+  // facets rather than a manifest, and the rows about to be painted need them.
+  if (!STATIC.on && d.facets) {
+    if (d.facets.families) FAMILIES = d.facets.families.map(f => [f.key, f.label]);
+    if (d.facets.labels) TAGS = d.facets.labels;
+  }
   shown = more ? shown.concat(d.results) : d.results;
   $('#board').classList.toggle('matched', CV.on);
 
@@ -1825,7 +1983,9 @@ async function load(more = false) {
     : state.fresh ? 'new since your last visit'
     : whole() ? 'roles in the index' : 'roles in this window';
   $('#count').textContent = n(total);
+  const famNames = state.fam.map(f => (FAMILIES.find(([k]) => k === f) || [f, f])[1]);
   $('#countlabel').textContent = 'roles match'
+    + (famNames.length ? ' for ' + famNames.join(' or ') : '')
     + (state.city ? ' in ' + place(state.city) : '');
   // The odometer reads as loose digits to a screen reader, so the number is
   // also announced as a sentence.
@@ -1912,8 +2072,59 @@ function rail(f) {
       : '';
   }
   paintFresh(f);
+  paintAsks(f);
 
   paint();
+}
+
+// The role list and the two eligibility controls. Each stays hidden when the
+// facets do not carry it: an export built before these fields existed would
+// otherwise offer controls that silently match nothing.
+function paintAsks(f) {
+  if (f.families && f.families.length) {
+    if (!FAMILIES.length) FAMILIES = f.families.map(x => [x.key, x.label]);
+    knownFilters();
+    const max = Math.max(1, ...f.families.map(x => x.n));
+    $('#fams').innerHTML = f.families.map(x =>
+      `<button type="button" data-fam="${esc(x.key)}" aria-pressed="false"${
+        x.n ? '' : ' disabled'}>
+        <b>${esc(x.label)}</b>
+        <i style="width:${Math.max(Math.round(x.n / max * 46), 4)}px"></i>
+        <em>${n(x.n)}</em>
+      </button>`).join('');
+    for (const b of document.querySelectorAll('#fams button'))
+      b.onclick = () => {
+        const k = b.dataset.fam;
+        state.fam = state.fam.includes(k) ? state.fam.filter(x => x !== k)
+                                          : [...state.fam, k];
+        apply();
+      };
+    $('#fambox').hidden = false;
+  }
+
+  const r = f.rights, s = f.sponsorship, open = f.rights_open, scope = f.scope || 0;
+  if (r && open) {
+    $('#rights-any').textContent = n(scope);
+    $('#rights-no_pr').textContent = n(open.no_pr);
+    $('#rights-no_ask').textContent = n(open.no_ask);
+    $('#rightsnote').innerHTML = `Read from each ad&rsquo;s own words. <b>${
+      n(r.citizen)}</b> of these ${n(scope)} say Australian citizens only &mdash;
+      mostly because the role needs a security clearance &mdash; and <b>${
+      n(r.citizen_or_pr)}</b> accept permanent residents too. <b>${
+      n(r.full_rights)}</b> more ask for full work rights without naming a status,
+      which a graduate visa (485) meets and a student visa does not. The rest say
+      nothing, which is not the same as saying yes.`;
+    $('#rightsbox').hidden = false;
+  }
+  if (s) {
+    $('#sponsorsn').textContent = n(s.offered);
+    $('#sponsorsnote').innerHTML = `<b>${n(s.offered)}</b> ads here say they
+      sponsor a visa &mdash; for a skilled role that is usually the 482, now the
+      Skills in Demand visa &mdash; and <b>${n(s.not_offered)}</b> say they
+      can&rsquo;t. Most don&rsquo;t say either way, so an ad without the tag may
+      still sponsor.`;
+    $('#sponsorbox').hidden = false;
+  }
 }
 
 /* ---------- controls ---------- */
@@ -1925,6 +2136,16 @@ function paint() {
     b.ariaPressed = String(b.dataset.city === state.city);
   for (const b of document.querySelectorAll('#works button'))
     b.ariaPressed = String(b.dataset.work === state.work);
+  for (const b of document.querySelectorAll('#fams button')) {
+    const on = state.fam.includes(b.dataset.fam);
+    b.ariaPressed = String(on);
+    // A family with no open roles is still pickable while a link has it on,
+    // so it can be turned off again.
+    if (on) b.disabled = false;
+  }
+  for (const el of document.querySelectorAll('#rights input'))
+    el.checked = el.value === state.rights;
+  $('#sponsors').checked = state.sponsors;
   // An unchosen sort still shows which order the list is actually in.
   const effective = state.sort || (state.q ? 'relevance' : 'newest');
   for (const b of document.querySelectorAll('#sorts button')) {
@@ -1953,8 +2174,8 @@ function normaliseSort() {
 function apply() { normaliseSort(); paint(); writeURL(); load(); }
 
 function reset() {
-  Object.assign(state, { q:'', city:'', work:'', paid:false, fresh:false, sort:'',
-                         a:0, b:WEEKS - 1 });
+  Object.assign(state, { q:'', fam:[], city:'', work:'', rights:'', sponsors:false,
+                         paid:false, fresh:false, sort:'', a:0, b:WEEKS - 1 });
   apply();
 }
 
@@ -1974,6 +2195,9 @@ for (const b of document.querySelectorAll('#works button'))
 for (const b of document.querySelectorAll('#sorts button'))
   b.onclick = () => { state.sort = b.dataset.sort; apply(); };
 $('#paid').onchange = e => { state.paid = e.target.checked; apply(); };
+for (const el of document.querySelectorAll('#rights input'))
+  el.onchange = () => { if (el.checked) { state.rights = el.value; apply(); } };
+$('#sponsors').onchange = e => { state.sponsors = e.target.checked; apply(); };
 $('#fresh').onchange = e => { state.fresh = e.target.checked; apply(); };
 $('#reset').onclick = reset;
 
