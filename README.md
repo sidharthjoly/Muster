@@ -101,6 +101,10 @@ There were also several hundred smaller jobs. Most of these were in Sydney (279)
 
 **Résumé matching.** Upload a PDF or paste your text. We rank every open job based on your skills. Each row shows the specific words that matched. This helps you see why a job is ranked highly. The list is **ranked, not filtered**. We show every job, even if it has a low score. If a job has no matches, the list will say so on that row.
 
+**What your résumé is missing.** Once a résumé is loaded, a line under it lists the skills that the matching jobs mention most and your résumé does not. It counts only jobs that already match you, and it follows your filters. Pick Melbourne, and you see the gaps for Melbourne jobs. A mention in an ad is not a requirement.
+
+**New since your last visit.** Jobs that were not on the site the last time you opened it are marked *new*, and one checkbox shows only those. Your browser remembers which jobs it showed you. Nothing is sent anywhere. Reloading the page keeps the marks. They move on only when a newer version of the index arrives.
+
 **Your résumé stays in your browser.** The page reads the file on your computer and ranks it in the tab. The site uses static files on a CDN. There is nothing to upload. This is how the site is built. It is not a promise about what a server does with your data.
 
 The only exception is the `match_resume` tool in the MCP endpoint. This is a server. It must receive the text it ranks. It keeps the text in memory for that call only. It does not store or log the data. However, this is a promise. The paragraph above is stronger because it does not need a promise. Use the site if you prefer not to take it.

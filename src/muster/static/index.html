@@ -413,6 +413,25 @@
     font-variant-numeric:tabular-nums;
     color:color-mix(in srgb, var(--color-text) 55%, transparent); }
 
+  /* — what the résumé is missing. Dashed where the match line's chips are
+       filled: these are the terms the reader does not have. — */
+  .gap { margin-top:var(--space-3); font-size:12.5px; }
+  .gap[hidden] { display:none; }
+  .gap p { margin:0 0 6px; }
+  .gap p b { font-weight:500; }
+  .gap .terms { display:flex; gap:5px; flex-wrap:wrap; }
+  .gap .terms span { padding:1px 7px; font-size:11.5px;
+    border:1px dashed var(--color-accent-500); color:var(--color-accent-800); }
+  .gap .terms em { font-style:normal; font-variant-numeric:tabular-nums;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .gap .how { margin:6px 0 0; font-size:11px; line-height:1.6;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+
+  /* — a role this browser has not been shown before — */
+  .nw { display:inline-block; margin-left:7px; padding:0 5px; font-size:10px;
+    font-weight:500; letter-spacing:.06em; text-transform:uppercase;
+    vertical-align:2px; background:var(--color-accent); color:var(--color-bg); }
+
   /* — skeleton and empty state — */
   .sk td { padding:var(--space-3) var(--space-2); }
   .sk i { display:block; height:13px; background:var(--color-neutral-300);
@@ -501,6 +520,16 @@
     <div class="board">
 
       <aside class="rail">
+        <div id="freshbox" hidden>
+          <h6>Since your last visit</h6>
+          <label class="paid">
+            <input type="checkbox" id="fresh">
+            <span>New roles only</span>
+            <em id="freshn"></em>
+          </label>
+          <p class="note" id="freshnote"></p>
+        </div>
+
         <div>
           <h6>Location</h6>
           <div class="cities" id="cities"></div>
@@ -562,6 +591,7 @@
               gone.</p>
             <div class="cvstate" id="cvstate" hidden></div>
           </div>
+          <div class="gap" id="cvgap" hidden></div>
         </section>
 
         <figure class="dial blueprint" id="dial" hidden>
@@ -658,8 +688,11 @@ const WEEKS = 16;
 // filter at all rather than "the last sixteen weeks": the index holds roles
 // older than the chart is drawn to show, and quietly dropping them would make
 // the resting count a lie.
-const state = { q:'', cat:'data', city:'', work:'', paid:false, a:0, b:WEEKS - 1,
-                sort:'', offset:0 };
+// `fresh` is kept out of the URL on purpose: "new to me" is a fact about this
+// browser, and a shared link carrying it would mean something different, or
+// nothing, to whoever opened it.
+const state = { q:'', cat:'data', city:'', work:'', paid:false, fresh:false,
+                a:0, b:WEEKS - 1, sort:'', offset:0 };
 // The sorts the query layer actually implements (search.ORDERS). `relevance`
 // needs an FTS expression to rank against, so it is offered only while the box
 // has something in it — search() silently falls back to newest otherwise.
@@ -703,7 +736,8 @@ function writeURL() {
 const lo = () => Math.min(state.a, state.b);
 const hi = () => Math.max(state.a, state.b);
 const whole = () => lo() === 0 && hi() === WEEKS - 1;
-const dirty = () => !!(state.q || state.city || state.work || state.paid || !whole());
+const dirty = () => !!(state.q || state.city || state.work || state.paid || state.fresh
+                       || !whole());
 
 // The window is a pair of absolute dates, not an age. The export is read for
 // days after it is built, and "sixteen weeks ago" counted from the reader's
@@ -724,6 +758,7 @@ function params(offset = 0) {
   if (state.city) p.set('city', state.city);
   if (state.work) p.set('remote', state.work);
   if (state.paid) p.set('has_salary', '1');
+  if (state.fresh) p.set('fresh', '1');
   const w = window_();
   if (w) { p.set('since', w.since); p.set('until', w.until); }
   // With no sort chosen, newest is what a hunter wants — except while they are
@@ -783,7 +818,8 @@ function rowHTML(j) {
   // The match cell is emitted empty rather than dropped when no resume is
   // loaded: a column that came and went would reflow every other one.
   return `<td class="t">
-      <a href="${url}" target="_blank" rel="noopener">${esc(j.title)}</a>${
+      <a href="${url}" target="_blank" rel="noopener">${esc(j.title)}${
+        isNew(j) ? '<span class="nw">new</span>' : ''}</a>${
         CV.on ? hitsHTML(j) : ''}
     </td>
     <td>${esc(j.company || '')}</td>
@@ -839,6 +875,7 @@ async function detectStatic() {
     // chart rather than throwing on the way to drawing it.
     if (m.pulse && m.pulse.weeks) PULSE = m.pulse;
     UNRANKABLE = m.unrankable || 0;
+    wireFresh();
     wireCV(m);
     return true;
   } catch { return false; }
@@ -865,6 +902,7 @@ function searchLocal(p) {
     if (p.get('remote') && j.remote_type !== p.get('remote')) return false;
     if (p.get('city') && j.location_city !== p.get('city')) return false;
     if (p.get('has_salary') && !j.salary_min) return false;
+    if (p.get('fresh') && !isNew(j)) return false;
     // String comparison on YYYY-MM-DD, the same shape the SQL uses, so both
     // backends put a role in the same week.
     if (since || until) {
@@ -896,7 +934,8 @@ function searchLocal(p) {
     // should be counting.
     return { total:ranked.length, matched:ranked.filter(j => j._m.score > 0).length,
              results:ranked.slice(off, off + PAGE),
-             facets:off ? null : localFacets() };
+             facets:off ? null : localFacets(),
+             gap:off ? null : skillGap(ranked) };
   }
   if (p.get('sort') === 'salary') {
     // NULLS LAST, matching search.ORDERS: a role with no band sinks rather
@@ -928,7 +967,8 @@ function localFacets() {
   };
   return { cities:tally(j => j.location_city).slice(0, 30),
            remote:tally(j => j.remote_type), scope:scope.length,
-           salaried:scope.filter(j => j.salary_min).length };
+           salaried:scope.filter(j => j.salary_min).length,
+           fresh:scope.filter(isNew).length };
 }
 
 /* ---------- resume matching ---------- */
@@ -1356,6 +1396,113 @@ function wireCV(m) {
   };
 }
 
+/* ---- what the résumé is missing ---- */
+
+// The skills most mentioned by the roles that already match this résumé, among
+// those it does not name. Only matched roles are counted: a gap measured
+// against roles the reader shares nothing with would be advice for a different
+// career. Counted over the list as it is filtered, so narrowing to Melbourne
+// or to hybrid roles narrows the advice with it. A term one ad mentions is
+// not a pattern, so it takes two.
+const GAP_SHOWN = 6;
+
+function skillGap(ranked) {
+  const matched = ranked.filter(j => j._m && j._m.score > 0);
+  const tally = new Map();
+  for (const j of matched)
+    for (const s of unpackSk(j))
+      if (!CV.skills.has(s)) tally.set(s, (tally.get(s) || 0) + 1);
+  const top = [...tally].filter(([, c]) => c >= 2)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, GAP_SHOWN);
+  return { of:matched.length, top };
+}
+
+function paintGap(g) {
+  const el = $('#cvgap');
+  if (!CV.on || !g || !g.top.length) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = `<p>Not on your r&eacute;sum&eacute;, and most mentioned by the
+      <b>${n(g.of)}</b> role${g.of === 1 ? '' : 's'} here that match it:</p>
+    <div class="terms">${g.top.map(([s, c]) =>
+      `<span title="${n(c)} of the ${n(g.of)} roles that match your r&eacute;sum&eacute; mention ${
+        esc(s)}">${esc(s)} <em>${n(c)}</em></span>`).join('')}</div>
+    <p class="how">Counted from what those ads mention, in the list as it is
+      filtered now. A mention is not a requirement.</p>`;
+}
+
+/* ---------- what is new since this browser last looked ---------- */
+
+// Remembered as the set of roles this browser was last shown, not as a date.
+// A date would need `first_seen_at` on every row, which the export drops
+// wherever the employer's own date is present -- and "posted since" is a
+// different question anyway: a board adopted this morning brings in roles
+// posted weeks ago that nobody here has seen.
+//
+// The remembered set only moves when a newer export arrives. Reloading the
+// same export keeps comparing against the visit before it, so a refresh does
+// not wipe the marks the reader has not finished reading.
+//
+// Keys are hashed to keep two exports' worth under ~150KB of storage. A
+// collision can only hide a new role's mark, never invent one.
+//
+// An export is recognised by the roles it holds, not by the manifest's
+// `generated_at`. The manifest is fetched uncached and jobs.json is not, so
+// for a few minutes after a publish the two can disagree -- and stamped with
+// the manifest's time, the old roles would be filed under the new export and
+// the next visit would compare against the wrong set. Found by exactly that
+// happening in a browser test.
+const SEEN_KEY = 'muster.seen.v1';
+const FRESH = { ready:false, on:false, set:null, since:null };
+
+const hkey = s => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(36);
+};
+
+const isNew = j => FRESH.on && !FRESH.set.has(hkey(key(j)));
+
+function wireFresh() {
+  if (!STATIC.jobs.length) return;
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem(SEEN_KEY) || 'null'); }
+  catch { return; }   // storage blocked: the feature is simply absent
+  const keys = STATIC.jobs.map(j => hkey(key(j))).join(' ');
+  const stamp = hkey(keys);
+  const cur = saved && saved.cur;
+  const base = !cur ? null : cur.stamp === stamp ? saved.prev : cur;
+  const now = { stamp, at:Date.now(), keys };
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify({ cur:now, prev:base })); }
+  catch { return; }
+  FRESH.ready = true;
+  if (base && base.keys) {
+    FRESH.set = new Set(base.keys.split(' '));
+    FRESH.since = base.at;
+    FRESH.on = true;
+  }
+}
+
+const ago = ms => {
+  const h = (Date.now() - ms) / 36e5;
+  return h < 1.5 ? 'within the hour' : h < 48 ? `${Math.round(h)} hours ago`
+    : `${Math.round(h / 24)} days ago`;
+};
+
+function paintFresh(f) {
+  if (!FRESH.ready) return;
+  $('#freshbox').hidden = false;
+  if (!FRESH.on) {
+    $('#fresh').disabled = true;
+    $('#freshn').textContent = '';
+    $('#freshnote').textContent = 'Come back after the next sweep and the roles '
+      + 'added since now will be marked. Remembered in this browser only.';
+    return;
+  }
+  $('#freshn').textContent = n(f.fresh || 0);
+  $('#freshnote').textContent = `Roles that were not in the index when this `
+    + `browser last loaded it, ${ago(FRESH.since)}. Remembered in this browser only.`;
+}
+
 /* ---------- the dial ---------- */
 
 const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1633,6 +1780,7 @@ async function load(more = false) {
 
   odometer(total);
   $('#odolabel').textContent = state.q ? 'matching this search'
+    : state.fresh ? 'new since your last visit'
     : whole() ? 'roles in the index' : 'roles in this window';
   $('#count').textContent = n(total);
   $('#countlabel').textContent = 'roles match'
@@ -1640,7 +1788,9 @@ async function load(more = false) {
   // The odometer reads as loose digits to a screen reader, so the number is
   // also announced as a sentence.
   $('#live').textContent = `${n(total)} role${total === 1 ? '' : 's'} ${
-    state.q ? 'match this search' : whole() ? 'in the index' : 'in this window'}.`;
+    state.q ? 'match this search' : state.fresh ? 'new since your last visit'
+    : whole() ? 'in the index' : 'in this window'}.`;
+  if (!more) paintGap(CV.on ? d.gap : null);
 
   // The list is ranked rather than cut when a resume is loaded, so the count
   // that matters is no longer "how many matched" but "how many share anything
@@ -1719,6 +1869,7 @@ function rail(f) {
          this hides most of the index.`
       : '';
   }
+  paintFresh(f);
 
   paint();
 }
@@ -1740,6 +1891,7 @@ function paint() {
     b.disabled = b.dataset.sort === 'relevance' && !state.q;
   }
   $('#paid').checked = state.paid;
+  $('#fresh').checked = state.fresh;
   $('#reset').classList.toggle('on', dirty());
   $('#scope').textContent = state.cat === 'all'
     ? 'every field · Australia' : 'data & AI · Australia';
@@ -1759,7 +1911,7 @@ function normaliseSort() {
 function apply() { normaliseSort(); paint(); writeURL(); load(); }
 
 function reset() {
-  Object.assign(state, { q:'', city:'', work:'', paid:false, sort:'',
+  Object.assign(state, { q:'', city:'', work:'', paid:false, fresh:false, sort:'',
                          a:0, b:WEEKS - 1 });
   apply();
 }
@@ -1780,6 +1932,7 @@ for (const b of document.querySelectorAll('#works button'))
 for (const b of document.querySelectorAll('#sorts button'))
   b.onclick = () => { state.sort = b.dataset.sort; apply(); };
 $('#paid').onchange = e => { state.paid = e.target.checked; apply(); };
+$('#fresh').onchange = e => { state.fresh = e.target.checked; apply(); };
 $('#reset').onclick = reset;
 
 document.addEventListener('keydown', e => {
