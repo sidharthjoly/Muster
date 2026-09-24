@@ -119,7 +119,12 @@ curl -s --compressed https://muster.sidharthjoly.com/data/v1/jobs-data.json
 
 # counts, freshness and the matching vocabularies, ~3KB — small enough to poll
 curl -s --compressed https://muster.sidharthjoly.com/data/v1/manifest.json
+
+# the weekly roundup as RSS: one item per week of new data & AI roles
+curl -s https://muster.sidharthjoly.com/weekly.xml
 ```
+
+The weekly feed also works as an email newsletter. Give its address to an RSS-to-email service, and each new week goes out as one email.
 
 There is also an **MCP server** for agents. It filters and ranks data on the server side instead of sending the whole file.
 

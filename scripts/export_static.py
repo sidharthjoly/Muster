@@ -52,7 +52,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from muster import runs, search, skills  # noqa: E402
+from muster import feed, runs, search, skills  # noqa: E402
 from muster.store import DEFAULT_SQLITE  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -292,6 +292,9 @@ def build(db: Path) -> dict:
     for job, kw, sk in zip(jobs, search.keywords(bodies), found):
         job["kw"] = kw
         job["sk"] = skills.pack(sk)
+    # Taken before `_slim`, which drops first_seen_at from every row that has
+    # an employer's date — and first sighting is what the feed's weeks are.
+    feed_rows = [dict(j) for j in jobs if search.is_data_role(j.get("title"))]
     jobs = [_slim(j) for j in jobs]
     skill_df = skills.document_frequency(found)
 
@@ -310,6 +313,11 @@ def build(db: Path) -> dict:
     # and directories beginning with an underscore.
     (SITE / ".nojekyll").write_text("")
     (SITE / "CNAME").write_text(CNAME + "\n")
+    # At the root rather than under data/v1: this is the address people paste
+    # into a mail service or a feed reader, and it should be the short one.
+    (SITE / feed.FILE).write_text(feed.rss(
+        feed_rows, now=datetime.now(timezone.utc), site=f"https://{CNAME}/",
+        first_run=pulse.get("closures_since")))
 
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),

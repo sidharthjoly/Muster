@@ -23,6 +23,8 @@ This also applies to this document. The numbers below were measured against the 
 
 `health.json` shows the results of sweeps for each board and vendor. It shows what failed and how many days late the oldest board is.
 
+`https://muster.sidharthjoly.com/weekly.xml` is an RSS feed, not JSON. It has one item per finished week (Monday to Sunday, Sydney time) for the last eight weeks. Each item counts the data and AI roles that first appeared on Muster that week and were still open when the feed was built. It lists up to 10 of them: the most recently posted, with at most two from any one employer. It is meant for a feed reader or an RSS-to-email service. Each item's `guid` names its week and never changes, so a mail service sends each week once. Weeks go by when Muster first saw a role, not by the employer's posting date. That way a week is complete once it ends. The week the index started is left out, because every role was "new" that week.
+
 ## A row
 
 Both `jobs.json` and `jobs-data.json` are flat arrays of these items. **If a key has a null or empty value, it is left out of the file instead of being set to null.** If a key is missing, it means "not published for this role." This is normal and is not an error.
