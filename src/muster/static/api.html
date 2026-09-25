@@ -639,6 +639,9 @@ const isDataRole = m.data_terms.some(t =&gt; s.includes(t))
             <p>Streamable HTTP transport. There is no authentication and no rate limit:
               everything it serves is already public in the <a href="#files">files
               above</a>, so a key would protect nothing.</p>
+            <p>A web page on any site can call it from the browser: it answers CORS
+              preflights with <code>access-control-allow-origin: *</code>, as the
+              files do.</p>
           </div>
           <div class="op-side">
             <div class="xcard" data-copy>
@@ -1122,12 +1125,12 @@ function paint(code) {
 }
 document.querySelectorAll('code.json').forEach(paint);
 
-// Sending a request from the page. Same origin only: the Worker answers
-// /mcp on this hostname and sends no CORS headers, so from anywhere else —
-// muster.web, a file:// open, a local preview — the fetch fails and the card
-// says where it works instead of showing a bare network error. The request is
-// exactly what the card shows, edited or not.
-const MCP = '/mcp';
+// Sending a request from the page. The full address rather than `/mcp`: the
+// Worker answers CORS preflights for any origin, so the same call works from
+// the published page, from muster.web and from a file:// open, and a copy of
+// this page served anywhere else still reaches the one real endpoint. The
+// request is exactly what the card shows, edited or not.
+const MCP = 'https://muster.sidharthjoly.com/mcp';
 // Indented JSON, with short lists of plain values kept on one line the way
 // the example cards write them: `"skills": ["python", "sql"]`, not a line
 // apiece. Items never contain a raw newline, so splitting on one is safe.
@@ -1137,8 +1140,8 @@ const pretty = o => JSON.stringify(o, null, 2).replace(FLAT, (all, items) => {
   const line = items.split(/,\s*\n\s*/).join(', ');
   return line.length <= 60 ? `[${line}]` : all;
 });
-const NOT_HERE = 'The MCP server could not be reached from here. Sending works on '
-  + 'muster.sidharthjoly.com, where this page and the server share an address.';
+const NOT_HERE = 'The MCP server could not be reached. Check the connection and '
+  + 'send it again; the request above has not changed.';
 function answer(card, stat, text, isJson) {
   let live = card.nextElementSibling;
   if (!live || !live.classList.contains('live')) {
@@ -1184,7 +1187,7 @@ async function send(card, btn, hint) {
       .map(l => l.slice(5)).join('\n') || raw;
     let msg;
     try { msg = JSON.parse(data); } catch {
-      // Not JSON: a static host answering the POST itself, with no /mcp.
+      // Not JSON: something other than the Worker answered the POST.
       return answer(card, `${r.status} · ${ms} ms`, r.ok ? raw : NOT_HERE, false);
     }
     if (!msg || typeof msg !== 'object' || !('result' in msg || 'error' in msg)) {

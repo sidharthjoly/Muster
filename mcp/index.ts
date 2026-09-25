@@ -13,6 +13,7 @@
  */
 
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { z } from "zod";
@@ -296,6 +297,25 @@ function buildServer() {
 // guides write the trailing slash; a 404 on it reads as "no server here"
 // rather than as a path that is one character off.
 const app = new Hono({ strict: false });
+
+// Any page may call this from a browser, not only the API reference on this
+// hostname. Without it the preflight got a 405 and the browser refused the
+// call, so a tool page elsewhere — or the reference opened from a local
+// preview — could not reach the endpoint at all.
+//
+// `*` rather than a list of origins, for the same reason there is no key: the
+// data is already public with `access-control-allow-origin: *` on the files,
+// there are no cookies or credentials to protect, and the transport is
+// stateless, so a foreign page gains nothing it could not fetch directly.
+// Registered on every path, ahead of the route, so `/mcp/` is covered too.
+app.use("*", cors({
+  origin: "*",
+  allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Accept", "Mcp-Session-Id",
+                 "Mcp-Protocol-Version", "Last-Event-ID"],
+  exposeHeaders: ["Mcp-Session-Id", "Mcp-Protocol-Version"],
+  maxAge: 86400,
+}));
 
 app.all("/mcp", async (c) => {
   const transport = new StreamableHTTPTransport();
