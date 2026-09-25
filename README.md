@@ -10,9 +10,9 @@
 <p align="center">
   <a href="https://muster.sidharthjoly.com/"><strong>muster.sidharthjoly.com</strong></a>
   &nbsp;·&nbsp;
-  <a href="docs/api.md">Data API</a>
+  <a href="https://muster.sidharthjoly.com/api.html">Data API</a>
   &nbsp;·&nbsp;
-  <a href="docs/mcp.md">MCP</a>
+  <a href="https://muster.sidharthjoly.com/api.html#mcp">MCP</a>
   &nbsp;·&nbsp;
   <a href="docs/build-log.md">Build log</a>
   &nbsp;·&nbsp;
@@ -23,7 +23,7 @@
   <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
   <img alt="Python 3.14+" src="https://img.shields.io/badge/python-3.14%2B-3776AB.svg">
   <a href="https://muster.sidharthjoly.com/data/v1/manifest.json"><img alt="Data: open JSON" src="https://img.shields.io/badge/data-open%20JSON-success.svg"></a>
-  <a href="docs/mcp.md"><img alt="MCP endpoint" src="https://img.shields.io/badge/MCP-endpoint-8A63D2.svg"></a>
+  <a href="https://muster.sidharthjoly.com/api.html#mcp"><img alt="MCP endpoint" src="https://img.shields.io/badge/MCP-endpoint-8A63D2.svg"></a>
 </p>
 
 ---
@@ -145,7 +145,7 @@ It provides `search_roles`, `get_role`, `index_health`, and `match_resume`.
 
 Both interfaces use a snapshot that is rebuilt four times a day. Every response shows the build time.
 
-You can find the row schema, versioning rules, and how to get data slices in **[docs/api.md](docs/api.md)**. The tool-by-tool guide is in **[docs/mcp.md](docs/mcp.md)**.
+The full reference is on the site, at **[muster.sidharthjoly.com/api.html](https://muster.sidharthjoly.com/api.html)**: the files, the row schema, versioning and the data-slice rule, and every MCP tool with a worked example you can send from the page.
 
 ## How it works
 

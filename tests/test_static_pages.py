@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT / "src" / "muster" / "static"
 API_PAGE = STATIC / "api.html"
 SERVER = ROOT / "mcp" / "index.ts"
+MCP_POINTER = ROOT / "docs" / "mcp.md"
 
 SHARED = re.compile(r"^  /\* ==== SHARED.*?END ==== \*/$", re.S | re.M)
 
@@ -83,6 +84,14 @@ def test_the_parsers_see_something():
 
 def test_api_page_documents_every_tool():
     assert set(_page_tools()) == set(_server_tools())
+
+
+def test_mcp_pointer_links_every_tool():
+    # docs/mcp.md is a pointer to the page, not a second reference, but it does
+    # name the tools; a new one missing there sends GitHub readers nowhere.
+    text = MCP_POINTER.read_text()
+    for tool in _server_tools():
+        assert f"api.html#{tool}" in text, f"docs/mcp.md does not link {tool}"
 
 
 def test_api_page_documents_every_parameter():

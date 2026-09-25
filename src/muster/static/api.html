@@ -20,10 +20,10 @@
      `muster.sidharthjoly.com/mcp*`, which would catch /mcp.html before
      GitHub Pages ever saw the request.
 
-     The reference is written from mcp/index.ts, not from the markdown, and
-     docs/api.md and docs/mcp.md carry the same material for GitHub readers.
-     That is two copies of prose; tests/test_static_pages.py holds this one's
-     tool and argument lists to what the server actually registers. */
+     This page is the one reference: docs/api.md and docs/mcp.md only point
+     here, so the prose has a single copy. It is written from mcp/index.ts, and
+     tests/test_static_pages.py holds its tool and argument lists to what the
+     server actually registers. */
   /* ==== SHARED WITH THE OTHER PAGES — START. Edit all three, then run
      tests/test_static_pages.py. ==== */
   :root {
@@ -1085,9 +1085,7 @@ const isDataRole = m.data_terms.some(t =&gt; s.includes(t))
           filters in memory. Because it reads the site&rsquo;s own data, it cannot
           disagree with the site.</p>
         <p>Source: <a href="https://github.com/sidharthjoly/Muster/tree/main/mcp"><code>mcp/</code></a>
-          on GitHub. This reference is also kept as Markdown, in
-          <a href="https://github.com/sidharthjoly/Muster/blob/main/docs/api.md"><code>docs/api.md</code></a>
-          and <a href="https://github.com/sidharthjoly/Muster/blob/main/docs/mcp.md"><code>docs/mcp.md</code></a>.</p>
+          on GitHub.</p>
       </section>
 
     </main>
