@@ -13,6 +13,9 @@ import re
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
+from functools import lru_cache
+
+from . import eligibility, roles
 
 FTS_DDL = """
 CREATE VIRTUAL TABLE IF NOT EXISTS jobs_fts USING fts5(
@@ -29,7 +32,10 @@ SELECT_COLS = """
     j.salary_min, j.salary_max, j.salary_currency, j.salary_period,
     j.department, j.employment_type, j.seniority, j.apply_url,
     j.posted_at, j.first_seen_at, j.last_seen_at, j.closed_at,
-    SUBSTR(COALESCE(j.description_text, ''), 1, 320) AS snippet
+    SUBSTR(COALESCE(j.description_text, ''), 1, 320) AS snippet,
+    muster_families(j.title) AS family,
+    muster_work_rights(j.title, j.description_text) AS work_rights,
+    muster_sponsorship(j.title, j.description_text) AS sponsorship
 """
 
 # Unambiguous data/ML titles.
@@ -77,6 +83,14 @@ class Query:
     vendor: str = ""
     company: str = ""
     data_only: bool = False
+    # Comma-separated `roles.FAMILIES` slugs. When set it replaces `data_only`
+    # rather than narrowing it: see `roles`.
+    family: str = ""
+    # "no_pr" hides roles whose ad asks for citizenship or permanent residency;
+    # "no_ask" hides every stated work-rights requirement and every "no
+    # sponsorship". Both read `eligibility`, so neither says more than the ad.
+    rights: str = ""
+    sponsors: bool = False     # only roles whose ad says it sponsors visas
     has_salary: bool = False
     days: int = 0              # only roles first seen in the last N days
     # The dial brushes a span of weeks, which is a range and not an age: an
@@ -151,6 +165,45 @@ def _fts_expression(q: str) -> str:
     return " AND ".join(safe) if safe else NO_MATCH
 
 
+# The role families and the eligibility read are Python, not SQL: they are
+# regular expressions over a title and a description that no LIKE can express.
+# SQLite runs them as functions registered on the connection. They are the only
+# clauses here that do not port to Postgres, and they are only ever set by the
+# served UI, which is SQLite-only (see `muster.web`); the export and the pulse
+# never ask for them.
+@lru_cache(maxsize=65536)
+def _eligibility(text: str) -> tuple[str | None, str | None]:
+    # Cached because the served UI asks again on every keystroke, and it asks
+    # the same few thousand descriptions each time.
+    return eligibility.read(text)
+
+
+def _ad(title, body) -> str:
+    return f"{title or ''}\n{body or ''}"
+
+
+def register(conn) -> None:
+    """Give a SQLite connection the functions the family, work-rights and
+    sponsorship clauses call. Idempotent, and cheap enough to run per request."""
+    conn.create_function("muster_families", 1,
+                         lambda t: roles.pack(roles.families(t)) or None,
+                         deterministic=True)
+    conn.create_function("muster_in_family", 2,
+                         lambda t, want: int(bool(set(roles.families(t))
+                                                  & set(want.split(",")))),
+                         deterministic=True)
+    conn.create_function("muster_work_rights", 2,
+                         lambda t, b: _eligibility(_ad(t, b))[0], deterministic=True)
+    conn.create_function("muster_sponsorship", 2,
+                         lambda t, b: _eligibility(_ad(t, b))[1], deterministic=True)
+
+
+def wanted_families(family: str) -> list[str]:
+    """The known slugs in a comma-separated `family` value. A stale bookmark
+    naming a family that no longer exists drops that name, not the filter."""
+    return [f for f in (family or "").split(",") if f in roles.LABELS]
+
+
 def _filters(qy: Query, alias="j", ph="?"):
     """Shared WHERE builder. `ph` is the placeholder style: the export can run
     this against Postgres, where `?` is a syntax error."""
@@ -188,13 +241,31 @@ def _filters(qy: Query, alias="j", ph="?"):
     if qy.until:
         where.append(f"COALESCE({alias}.posted_at, {alias}.first_seen_at) < {ph}")
         params.append(qy.until)
-    if qy.data_only:
+    fams = wanted_families(qy.family)
+    # A family is a narrower definition of a data role, so choosing one
+    # replaces this test rather than stacking on it. See `roles`.
+    if qy.data_only and not fams:
         t = f"LOWER(' '||{alias}.title||' ')"
         strong = " OR ".join([f"{t} LIKE {ph}"] * len(DATA_TERMS))
         not_excluded = " AND ".join([f"{t} NOT LIKE {ph}"] * len(ANALYST_EXCLUDE))
         where.append(f"(({strong}) OR ({t} LIKE {ph} AND {not_excluded}))")
         params += [f"%{x}%" for x in DATA_TERMS]
         params += ["%analyst%"] + [f"%{x}%" for x in ANALYST_EXCLUDE]
+    # Last, because they are the expensive ones — a regex over the title, then
+    # a read of the whole description — so the cheap column compares above
+    # come first in the conjunction.
+    if fams:
+        where.append(f"muster_in_family({alias}.title, {ph})")
+        params.append(",".join(fams))
+    ad = f"{alias}.title, {alias}.description_text"
+    if qy.rights == "no_pr":
+        where.append(f"COALESCE(muster_work_rights({ad}), '') "
+                     f"NOT IN ('{eligibility.CITIZEN}', '{eligibility.CITIZEN_OR_PR}')")
+    elif qy.rights == "no_ask":
+        where.append(f"muster_work_rights({ad}) IS NULL AND "
+                     f"COALESCE(muster_sponsorship({ad}), '') != '{eligibility.NOT_OFFERED}'")
+    if qy.sponsors:
+        where.append(f"muster_sponsorship({ad}) = '{eligibility.OFFERED}'")
     return where, params
 
 
@@ -209,6 +280,7 @@ ORDERS = {
 
 def search(conn, qy: Query) -> Results:
     conn.row_factory = sqlite3.Row
+    register(conn)
     expr = _fts_expression(qy.q)
     where, params = _filters(qy)
 
@@ -236,7 +308,8 @@ def search(conn, qy: Query) -> Results:
     ).fetchall()
 
     # Only on the first page: the rail is already drawn by the time anything
-    # pages, and these are four GROUP BYs carrying the whole data-role filter.
+    # pages, and these are four GROUP BYs carrying the whole data-role filter
+    # plus a read of every description in scope.
     return Results(total=total, rows=[dict(r) for r in rows],
                    facets=facets(conn, qy) if not qy.offset else {})
 
@@ -272,6 +345,37 @@ def facets(conn, qy: Query) -> dict:
         f"SELECT count(*), sum(CASE WHEN j.salary_min IS NOT NULL "
         f"AND j.salary_min > 0 THEN 1 ELSE 0 END) FROM jobs j {scope}", p).fetchone()
 
+    # Families are counted across the whole country rather than the data
+    # slice, because choosing one replaces the slice (see `roles`): this is the
+    # number a click on it will actually show.
+    fam = dict.fromkeys(roles.LABELS, 0)
+    fw, fp = _filters(Query(country=qy.country))
+    for (title,) in conn.execute(
+            f"SELECT j.title FROM jobs j WHERE {' AND '.join(fw)}", fp):
+        for slug in roles.families(title):
+            fam[slug] += 1
+
+    # What the ads in scope say about who may apply. Most say nothing, and the
+    # rail reports the ones that do so the reader can see how much each control
+    # is able to act on.
+    rights = dict.fromkeys(eligibility.WORK_RIGHTS, 0)
+    sponsorship = dict.fromkeys(eligibility.SPONSORSHIP, 0)
+    # ...and what each `rights` choice would leave, which the rail prints
+    # beside it. Counted here rather than subtracted in the page, because
+    # "no_ask" hangs on both columns at once.
+    rights_open = {"no_pr": 0, "no_ask": 0}
+    for title, body in conn.execute(
+            f"SELECT j.title, j.description_text FROM jobs j {scope}", p):
+        r, sp = _eligibility(_ad(title, body))
+        if r:
+            rights[r] += 1
+        if sp:
+            sponsorship[sp] += 1
+        if r not in (eligibility.CITIZEN, eligibility.CITIZEN_OR_PR):
+            rights_open["no_pr"] += 1
+        if r is None and sp != eligibility.NOT_OFFERED:
+            rights_open["no_ask"] += 1
+
     return {
         "cities": group("j.location_city", 30),
         "remote": group("j.remote_type", 6),
@@ -279,6 +383,14 @@ def facets(conn, qy: Query) -> dict:
         "companies": companies,
         "scope": scope_n,
         "salaried": salaried or 0,
+        "families": [{"key": slug, "label": label, "n": fam[slug]}
+                     for slug, label in roles.LABELS.items()],
+        "rights": rights,
+        "rights_open": rights_open,
+        "sponsorship": sponsorship,
+        # The row tags' wording. The static page reads the same map from the
+        # manifest; the served page has no manifest, so it arrives here.
+        "labels": eligibility.LABELS,
     }
 
 
