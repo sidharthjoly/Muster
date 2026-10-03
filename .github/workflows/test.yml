@@ -1,0 +1,83 @@
+# The tests, on every change to main.
+#
+# Until this existed nothing ran them before the sweep published: whatever
+# landed on main went out to the site on the next scheduled run, tested or
+# not. Neither tests nor typecheck touch the network or the real database.
+#
+# The Postgres suite (tests/test_postgres.py) skips without MUSTER_TEST_DSN,
+# so this gives it a throwaway server on localhost. That is the only place the
+# Postgres spellings in runs.py and store.py get exercised before Neon sees
+# them, and the suite's own guard refuses anything that is not local or named
+# like a test database.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+    # The crawl's adoption commits touch only this file. Running the suite on
+    # each of them would cost nothing on a public repo but would bury the runs
+    # that matter.
+    paths-ignore:
+      - data/discovered_boards.csv
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - data/discovered_boards.csv
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        # Neon runs 18. The image ships pg_trgm, which the schema creates.
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: muster_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PYTHONUNBUFFERED: "1"
+      MUSTER_TEST_DSN: postgresql://postgres:postgres@localhost:5432/muster_test
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Python comes from .python-version, which uv reads.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.2.0
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      # The parity tests import mcp/*.ts straight into node, so this needs a
+      # node that strips types natively, and tsc comes from the lockfile.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install the MCP server's dependencies
+        run: npm ci
+
+      - name: pytest
+        run: uv run --frozen pytest -q
+
+      - name: Typecheck the MCP server
+        run: npx tsc --noEmit
