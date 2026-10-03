@@ -78,7 +78,7 @@ Reading the ATS directly changes three things you can feel while using it:
 | Employer boards watched | **911** |
 | Requisitions seen in total | **330,014** |
 | ATS systems supported | **7** |
-| Refreshed | **4× a day** |
+| Refreshed | **3–4× a day** |
 
 <sub>Figures from the build of 18 September 2026. Live counts are in
 [`manifest.json`](https://muster.sidharthjoly.com/data/v1/manifest.json);
@@ -143,7 +143,7 @@ Or one click — the endpoint is a URL without a key, so there is nothing to fil
 
 It provides `search_roles`, `get_role`, `index_health`, and `match_resume`.
 
-Both interfaces use a snapshot that is rebuilt four times a day. Every response shows the build time.
+Both interfaces use a snapshot that is rebuilt several times a day. Every response shows the build time.
 
 The full reference is on the site, at **[muster.sidharthjoly.com/api.html](https://muster.sidharthjoly.com/api.html)**: the files, the row schema, versioning and the data-slice rule, and every MCP tool with a worked example you can send from the page.
 
@@ -199,7 +199,7 @@ The full engineering record is in **[docs/build-log.md](docs/build-log.md)**. Th
 - **The closure history is new.** Muster only knows a role closed if it saw it happen. It started watching on 11 September 2026. Older weeks only show open roles. The chart marks these as "unwatched" instead of showing zero. This gets better over time and cannot be added to old data.
 - **Locations are from the employer's own field.** We show them as they are. One company posting many jobs in one city can take over a section. For example, Bjak has about one-eighth of all open data roles, all in Sydney. This is three times more than Commonwealth Bank.
 - **About 5% of roles have no description.** You can search for these by title and employer. However, there is no text to match against a résumé. The page says so.
-- **The website is a snapshot.** It is rebuilt four times a day. Every page shows the build time. The [`/runs`](https://muster.sidharthjoly.com/runs.html) page counts "N hours ago" based on the export time, not the current time.
+- **The website is a snapshot.** It is rebuilt several times a day: four sweeps are scheduled, but GitHub starts scheduled runs hours late and sometimes skips one, so three a day is typical and the snapshot is often six to nine hours old before the next one lands. Every page shows the build time. The [`/runs`](https://muster.sidharthjoly.com/runs.html) page counts "N hours ago" based on the export time, not the current time.
 
 Is the index incorrect or missing an employer you expect to see?
 [Open an issue](https://github.com/sidharthjoly/Muster/issues).
@@ -236,7 +236,7 @@ npm install
 npx wrangler dev                   # http://127.0.0.1:8787/mcp
 ```
 
-Tests: `uv run pytest` — 320 tests total. No internet connection is needed.
+Tests: `uv run pytest` — 370 tests. The 17 Postgres ones skip unless `MUSTER_TEST_DSN` points at a throwaway database; CI gives them one. No internet connection is needed.
 
 ## License
 

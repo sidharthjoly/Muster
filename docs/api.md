@@ -12,7 +12,7 @@ https://muster.sidharthjoly.com/data/v1/health.json       sweep results per boar
 https://muster.sidharthjoly.com/weekly.xml                RSS: new data roles, one item per week
 ```
 
-**Everything is a snapshot**, rebuilt about four times a day. Read `generated_at` in the manifest before quoting a number.
+**Everything is a snapshot**, rebuilt several times a day. Read `generated_at` in the manifest before quoting a number.
 
 On the site: [the files](https://muster.sidharthjoly.com/api.html#files) · [a row](https://muster.sidharthjoly.com/api.html#row) · [the data slice](https://muster.sidharthjoly.com/api.html#slice) · [versioning](https://muster.sidharthjoly.com/api.html#versioning) · [weekly RSS](https://muster.sidharthjoly.com/api.html#weekly)
 
