@@ -166,3 +166,50 @@ def test_health_answers_every_section_of_the_page(store):
     h = runs.health(store.conn)
     assert set(h) == {"summary", "vendors", "problems", "churn", "recent"}
     assert h["recent"][0]["token"] == "acme"
+
+
+def test_a_retired_board_stops_counting_as_watched(store):
+    """A board `retired_boards.csv` wrote off is never fetched again, so its
+    last run only gets older. Counted, it becomes the stalest board for good
+    and pins the alarm red — `greenhouse:cesium` did exactly that from 17 Sep
+    — so nothing that goes stale afterwards can move it."""
+    store.reconcile(snap([], complete=False, error="HTTPStatusError: 404",
+                         token="cesium"))
+    backdate(store, runs.STALE_HOURS + 200)
+    store.reconcile(snap([job("1")]))
+
+    pinned = runs.summary(store.conn, retired=set())
+    assert (pinned["boards"], pinned["stale"], pinned["failed"]) == (2, 1, 1)
+
+    s = runs.summary(store.conn, retired={("greenhouse", "cesium")})
+    assert (s["boards"], s["stale"], s["failed"]) == (1, 0, 0)
+    assert s["stale_margin_hours"] == pytest.approx(runs.STALE_HOURS, abs=0.1)
+    assert runs.problems(store.conn, retired={("greenhouse", "cesium")}) == []
+    by = runs.by_vendor(store.conn, retired={("greenhouse", "cesium")})
+    assert [(r["vendor"], r["boards"]) for r in by] == [("greenhouse", 1)]
+
+
+def test_retirement_folds_case_the_way_board_key_does(store):
+    """`retired()` returns `crawl.board_key` pairs — lowercased for vendors
+    whose tokens are case-insensitive, verbatim for the rest. The stored token
+    has to be folded the same way or a re-found `Cesium` slips back in, while a
+    case-sensitive Lever token must not match a different casing."""
+    store.reconcile(snap([job("1", token="Cesium")], token="Cesium"))
+    store.reconcile(snap([job("2", vendor="lever", token="Zeller")],
+                         vendor="lever", token="Zeller"))
+    s = runs.summary(store.conn, retired={("greenhouse", "cesium"),
+                                          ("lever", "zeller")})
+    assert s["boards"] == 1
+    assert [r["vendor"] for r in runs.by_vendor(
+        store.conn, retired={("greenhouse", "cesium")})] == ["lever"]
+
+
+def test_health_reads_the_retired_csv_by_default(store, monkeypatch):
+    """The sweep summary, `/api/runs` and the export all call without a
+    `retired` argument, so the default has to be the real file."""
+    store.reconcile(snap([job("1")], token="cesium"))
+    monkeypatch.setattr(runs, "_retired_keys", lambda: {("greenhouse", "cesium")})
+    h = runs.health(store.conn)
+    assert h["summary"]["boards"] == 0 and h["vendors"] == []
+    # The log itself is history and keeps every row.
+    assert h["recent"][0]["token"] == "cesium"

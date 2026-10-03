@@ -146,6 +146,20 @@ def test_every_health_query_runs(store):
     assert isinstance(h["summary"]["stale_margin_hours"], float)
 
 
+def test_retired_boards_are_left_out_on_postgres(store):
+    """The exclusion binds parameters inside the CTE, ahead of `problems`'
+    LIMIT, and folds the stored token in SQL — both spelled per dialect."""
+    store.reconcile(snap([], complete=False, error="HTTPStatusError: 404",
+                         token="Cesium"))
+    store.reconcile(snap([job("1")]))
+    gone = {("greenhouse", "cesium")}
+    h = runs.health(store.conn, backend="postgres", retired=gone)
+    assert h["summary"]["boards"] == 1 and h["summary"]["failed"] == 0
+    assert h["problems"] == []
+    assert runs.problems(store.conn, limit=5, backend="postgres", retired=set())[0][
+        "token"] == "Cesium"
+
+
 def test_the_two_backends_agree(store, tmp_path):
     """Same snapshots into both, then diff the health payloads.
 

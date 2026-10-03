@@ -16,6 +16,10 @@ Neon and the step summary started reading its own run log back.)
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterable
+
+from .crawl import CASE_INSENSITIVE
+from .retired import retired as _retired_keys
 
 # How long after a sweep a board counts as stale.
 #
@@ -96,17 +100,50 @@ def _d(backend: str) -> dict:
     return DIALECTS["postgres" if backend == "postgres" else "sqlite"]
 
 
-def _latest(backend: str) -> str:
+Retired = Iterable[tuple[str, str]] | None
+
+
+def _watched(backend: str, gone: Retired) -> tuple[str, tuple]:
+    """A WHERE clause leaving out the boards `retired_boards.csv` wrote off.
+
+    A retired board is never fetched again, so its last `board_runs` row only
+    ever gets older. Left in, it became the stalest board within five days of
+    retirement and stayed that way: `greenhouse:cesium`, retired on 17 Sep,
+    held `stale` at 1 and the margin hundreds of hours negative on every sweep
+    summary, the runs page and the MCP `index_health` tool, so a board that
+    genuinely went stale could no longer move the alarm. The rows stay in the
+    log; they just stop counting as boards being watched.
+
+    `gone` holds `crawl.board_key` pairs, which fold case for some vendors, so
+    the comparison folds the stored token the same way. `None` reads the CSV.
+    """
+    keys = sorted(_retired_keys() if gone is None else set(gone))
+    if not keys:
+        return "", ()
+    ph = _d(backend)["ph"]
+    # Vendor names are module constants, not input, so inlining them is safe.
+    ci = ", ".join(f"'{v}'" for v in sorted(CASE_INSENSITIVE))
+    token = (f"CASE WHEN ats_vendor IN ({ci}) THEN lower(board_token) "
+             "ELSE board_token END")
+    one = f"(ats_vendor = {ph} AND {token} = {ph})"
+    params = tuple(x for key in keys for x in key)
+    return f"WHERE NOT ({' OR '.join([one] * len(keys))})", params
+
+
+def _latest(backend: str, gone: Retired = None) -> tuple[str, tuple]:
     """board_runs is append-only, so "the state of a board" means its most
-    recent row."""
+    recent row — for every board still being watched. Returns the CTE and the
+    parameters it binds, which go ahead of any the caller's query adds."""
+    where, params = _watched(backend, gone)
     return f"""
 WITH latest AS (
     SELECT {RUN_COLS}, ROW_NUMBER() OVER (
                PARTITION BY ats_vendor, board_token
                ORDER BY fetched_at DESC, {_d(backend)['seq']} DESC) AS rn
     FROM board_runs
+    {where}
 )
-"""
+""", params
 
 
 def _rows(conn, sql, params=(), backend="sqlite") -> list[dict]:
@@ -120,11 +157,13 @@ def _rows(conn, sql, params=(), backend="sqlite") -> list[dict]:
     return [dict(r) for r in conn.execute(sql, params).fetchall()]
 
 
-def summary(conn, backend: str = "sqlite") -> dict:
-    """One line's worth of "is the pipeline alive"."""
+def summary(conn, backend: str = "sqlite", retired: Retired = None) -> dict:
+    """One line's worth of "is the pipeline alive", over the boards still
+    being watched — `retired` defaults to `data/retired_boards.csv`."""
     d = _d(backend)
     n = d["count_if"]
-    row = _rows(conn, _latest(backend) + f"""
+    cte, params = _latest(backend, retired)
+    row = _rows(conn, cte + f"""
         SELECT count(*) AS boards,
                max(fetched_at) AS last_run,
                min(fetched_at) AS oldest_run,
@@ -145,7 +184,7 @@ def summary(conn, backend: str = "sqlite") -> dict:
                COALESCE(sum(n_reopened), 0) AS reopened,
                COALESCE(sum(n_fetched), 0) AS fetched
         FROM latest WHERE rn = 1
-    """, backend=backend)[0]
+    """, params, backend=backend)[0]
     row["stale_hours"] = STALE_HOURS
     # Normalised here, once, because the two backends disagree about the type:
     # Postgres computes the age with EXTRACT and hands back Decimal, SQLite
@@ -163,11 +202,12 @@ def summary(conn, backend: str = "sqlite") -> dict:
     return row
 
 
-def by_vendor(conn, backend: str = "sqlite") -> list[dict]:
-    """Per-adapter rollup of each board's most recent run."""
+def by_vendor(conn, backend: str = "sqlite", retired: Retired = None) -> list[dict]:
+    """Per-adapter rollup of each watched board's most recent run."""
     d = _d(backend)
     n = d["count_if"]
-    return _rows(conn, _latest(backend) + f"""
+    cte, params = _latest(backend, retired)
+    return _rows(conn, cte + f"""
         SELECT ats_vendor AS vendor,
                count(*) AS boards,
                {n(f"error IS NULL AND {d['done']}")} AS ok,
@@ -180,10 +220,11 @@ def by_vendor(conn, backend: str = "sqlite") -> list[dict]:
                max(fetched_at) AS last_run, min(fetched_at) AS oldest_run
         FROM latest WHERE rn = 1
         GROUP BY 1 ORDER BY boards DESC, vendor
-    """, backend=backend)
+    """, params, backend=backend)
 
 
-def problems(conn, limit: int = 60, backend: str = "sqlite") -> list[dict]:
+def problems(conn, limit: int = 60, backend: str = "sqlite",
+             retired: Retired = None) -> list[dict]:
     """Boards whose latest run errored or came back incomplete.
 
     Incomplete is worth surfacing next to failed even though it is not an
@@ -191,14 +232,15 @@ def problems(conn, limit: int = 60, backend: str = "sqlite") -> list[dict]:
     board stuck there is quietly not doing the one job the index exists for.
     """
     d = _d(backend)
-    return _rows(conn, _latest(backend) + f"""
+    cte, params = _latest(backend, retired)
+    return _rows(conn, cte + f"""
         SELECT ats_vendor AS vendor, board_token AS token, fetched_at,
                complete, n_fetched AS fetched, error
         FROM latest
         WHERE rn = 1 AND (error IS NOT NULL OR {d['not_done']})
         ORDER BY error IS NULL, fetched_at DESC
         LIMIT {d['ph']}
-    """, (limit,), backend=backend)
+    """, (*params, limit), backend=backend)
 
 
 def churn(conn, days: int = 21, backend: str = "sqlite") -> list[dict]:
@@ -229,11 +271,13 @@ def recent(conn, limit: int = 100, backend: str = "sqlite") -> list[dict]:
     """, (limit,), backend=backend)
 
 
-def health(conn, backend: str = "sqlite") -> dict:
+def health(conn, backend: str = "sqlite", retired: Retired = None) -> dict:
+    # Read once, so the three sections agree on which boards are watched.
+    gone = _retired_keys() if retired is None else set(retired)
     return {
-        "summary": summary(conn, backend),
-        "vendors": by_vendor(conn, backend),
-        "problems": problems(conn, backend=backend),
+        "summary": summary(conn, backend, gone),
+        "vendors": by_vendor(conn, backend, gone),
+        "problems": problems(conn, backend=backend, retired=gone),
         "churn": churn(conn, backend=backend),
         "recent": recent(conn, backend=backend),
     }
