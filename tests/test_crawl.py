@@ -175,6 +175,28 @@ def test_unadapted_suites_are_recorded_as_intelligence():
     assert hits["icims"] == "example"
 
 
+def test_a_vendors_own_asset_hosts_are_not_boards():
+    """A BambooHR embed loads the vendor's static, image and analytics hosts
+    beside the tenant's; a Phenom site pulls from its CDN. Only the tenant is
+    a board — the rest used to be recorded too, and each false hit ended the
+    crawl of that employer's site."""
+    html = """
+      <script src="https://staticfe.bamboohr.com/js/embed.js"></script>
+      <img src="https://images4.bamboohr.com/logo.png">
+      <link href="https://resources.bamboohr.com/css/x">
+      <script src="https://bhrpendo.bamboohr.com/agent.js"></script>
+      <a href="https://lawdeb.bamboohr.com/careers">Open roles</a>
+      <script src="https://pp-cdn.phenompeople.com/x.js"></script>
+      <script src="https://cdn-prod-static.phenompeople.com/y.js"></script>
+      <img src="https://content-ir.phenompeople.com/z.png">
+    """
+    assert find_boards(html) == [("bamboohr", "lawdeb")]
+    # The filter is on the label, not a substring: tenants may contain these.
+    assert plausible_token("bamboohr", "imagescorp")
+    assert plausible_token("greenhouse", "cdnetworks")
+    assert plausible_token("phenom", "contentsquare")
+
+
 def test_token_plausibility():
     assert plausible_token("greenhouse", "acmelabs")
     assert not plausible_token("greenhouse", "embed")

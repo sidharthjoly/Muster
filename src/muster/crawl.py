@@ -587,6 +587,20 @@ SKIP_TOKENS = {
 }
 _HEXISH = re.compile(r"^[0-9a-f]{16,}$", re.I)
 
+# Where a vendor's token is a subdomain, the vendor's own asset and CDN hosts
+# match the fingerprint too. A careers page that embeds a BambooHR widget
+# loads `staticfe.`, `images4.` and `resources.bamboohr.com` beside the real
+# `lawdeb.bamboohr.com`, and a Phenom site pulls from `pp-cdn.` and
+# `cdn-prod-static.phenompeople.com`. Recorded as boards, each one also marked
+# the employer's host exhausted, ending the crawl there on a false positive.
+_ASSET_HOST = re.compile(r"^(?:static|images?|img|assets?|cdn)\d*(?:fe)?$", re.I)
+_VENDOR_HOSTS = {
+    "bamboohr": re.compile(
+        r"^(?:resources|bhrpendo|marketplace|help|partners|status|login"
+        r"|documentation)$", re.I),
+    "phenom": re.compile(r"^content-[a-z]{2,}$", re.I),
+}
+
 
 #: Right-hand halves of a composite identity that are not a site path.
 #:
@@ -623,12 +637,16 @@ def plausible_token(vendor: str, token: str | None) -> bool:
         return site not in _NOT_A_SITE and not _LOCALE_ONLY.match(site) \
             and not site.isdigit()
     t = token.lower()
+    infra = _VENDOR_HOSTS.get(vendor)
     return (
         t not in SKIP_TOKENS
         and not t.isdigit()
         and not _HEXISH.match(t)
         and 1 < len(token) <= 60
         and not t.endswith((".js", ".css", ".png", ".svg", ".json"))
+        and not _ASSET_HOST.match(t)
+        and "cdn" not in t.split("-")
+        and not (infra and infra.match(t))
     )
 
 
