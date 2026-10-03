@@ -70,7 +70,7 @@ def render(manifest: dict, data_roles: int) -> str:
 | Employer boards watched | **{s['boards']:,}** |
 | Requisitions seen in total | **{s['jobs']:,}** |
 | ATS systems supported | **{s['vendors']}** |
-| Refreshed | **4× a day** |
+| Refreshed | **3–4× a day** |
 
 <sub>Figures from the build of {built:%-d %B %Y}. Live counts are in
 [`manifest.json`]({LIVE}/v1/manifest.json);
