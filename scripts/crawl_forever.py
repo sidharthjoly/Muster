@@ -304,8 +304,13 @@ async def forever(args) -> int:
             # only suspends its compute once nothing is connected, so a process
             # that runs for weeks holding one connection bills — or spends its
             # free-tier compute-hour budget on — every hour it is alive rather
-            # than every hour it is working. At a 6-minute rest that is the
-            # difference between ~180 compute-hours a month and under ten.
+            # than every hour it is working.
+            #
+            # Dropping it is necessary, not sufficient: Neon keeps the compute
+            # up for about five idle minutes after the last client leaves, so a
+            # rest only buys (rest - ~5 min) of sleep. A 6-minute rest measured
+            # 43 seconds asleep per lap. Rest well past five minutes, or the
+            # disconnect saves almost nothing — crawl_daemon.sh uses 30.
             #
             # Nothing is lost by dropping it: every Frontier method commits as
             # it goes, so there is never uncommitted state to carry across.

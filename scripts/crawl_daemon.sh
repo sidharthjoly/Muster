@@ -58,22 +58,31 @@ cd "$ROOT" || exit 1
 # No --laps and no --minutes: this is the mode `crawl_forever.py` was written
 # for.
 #
-# `--rest 360` is not throttling for its own sake, it is what makes running
-# this for weeks affordable. A serverless Postgres suspends its compute only
-# once nothing is connected, and crawl_forever drops the connection across any
-# rest over a minute — so a six-minute rest means the compute is awake for the
-# ~15 seconds a lap takes and asleep the rest of the time. Held open instead,
-# a 24/7 crawler spends ~180 compute-hours a month against a free tier that
-# allows 191.9, and the sweep still needs its share.
+# `--rest 1800` is not throttling for its own sake, it is what makes running
+# this for weeks affordable. crawl_forever drops the connection across any
+# rest over a minute, but Neon does not suspend the moment the last client
+# leaves: it waits about five minutes of inactivity first. So the compute is
+# awake for the lap plus ~5 minutes, and asleep only for whatever is left of
+# the rest after that.
 #
-# The rate that buys: ~20 pages every 6 minutes, so ~4,600 pages and ~2 MB of
-# frontier rows a day. Discovery is measured in weeks; this is a pace it can
-# hold for months without filling a 0.5 GB database.
+# This used to be `--rest 360` on the belief that six minutes let the compute
+# sleep for all but the ~15 seconds of a lap. Neon's operations log for 2-3 Oct
+# 2026 says otherwise: a start every ~6m05s, a suspend ~5m20s later, a median
+# of 43 seconds asleep. The compute was up roughly 88% of every hour the laptop
+# was on, against a free-tier compute allowance the sweep also has to fit in.
+# At 30 minutes it is up about one minute in five.
+#
+# The rate that buys: ~40 pages every half hour, so up to ~1,900 pages a day
+# on top of the two CI crawls, and well under 2 MB of frontier rows a day.
+# Discovery is measured in weeks. Storage is not the constraint here, but it
+# is not unlimited either: the whole database was 557 MB on 3 Oct 2026, against
+# the 1 GiB branch limit Neon reports for this project (`neon projects get`,
+# branch_logical_size_limit_bytes) — not the 0.5 GB this comment once assumed.
 #
 # MUSTER_CRAWL_ARGS narrows it for a smoke test without editing the plist.
 # shellcheck disable=SC2086 - word splitting is the point for the args var
 "$UV" run --project "$ROOT" python scripts/crawl_forever.py \
-    --expand --lap-pages 20 --rest 360 \
+    --expand --lap-pages 40 --rest 1800 \
     ${MUSTER_CRAWL_ARGS:-} >> "$LOG" 2>&1
 status=$?
 
