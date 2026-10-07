@@ -73,14 +73,14 @@ Reading the ATS directly changes three things you can feel while using it:
 <!-- STATS:BEGIN -->
 | | |
 |---|---|
-| Open roles in Australia | **9,146** |
-| — of them data / analytics / ML | **485** |
-| Employer boards watched | **911** |
-| Requisitions seen in total | **330,014** |
+| Open roles in Australia | **9,264** |
+| — of them data / analytics / ML | **462** |
+| Employer boards watched | **918** |
+| Requisitions seen in total | **460,721** |
 | ATS systems supported | **7** |
 | Refreshed | **3–4× a day** |
 
-<sub>Figures from the build of 18 September 2026. Live counts are in
+<sub>Figures from the build of 7 October 2026. Live counts are in
 [`manifest.json`](https://muster.sidharthjoly.com/data/v1/manifest.json);
 `scripts/update_readme_stats.py` refreshes this block.</sub>
 <!-- STATS:END -->
