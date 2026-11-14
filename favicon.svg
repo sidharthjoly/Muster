@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16" height="16" fill="none"
+     role="img" aria-label="Muster">
+  <!-- The same yard as `muster.svg`, drawn for 16px.
+       Two differences, both optical. The stroke is 4.4 units rather than 3.2:
+       at a favicon's size the thinner line greys out and the gate and the race
+       fill in, which is the whole shape. And the colour is written out rather
+       than inherited, because a favicon has nothing to inherit from — it is
+       the Industry system's accent token, copied here and kept in step by hand.
+       Naming that token in full here is what broke this file once: an XML
+       comment cannot hold two hyphens, and the favicon silently rendered
+       nothing.
+
+       No stylesheet, and that is the second thing this file learned. A
+       prefers-color-scheme block lifting the colour on a dark tab bar put
+       `fill` on the group holding these paths, a CSS declaration beats the
+       `fill="none"` above, fill inherits — and the enclosure went solid with
+       the dot swallowed inside it. Only in dark mode, so it looked perfect
+       to whoever wrote it. One colour, stated four times, cannot do that.
+       This blue carries about 4:1 against a light tab bar and about 4:1
+       against a dark one, so it does not need the help. -->
+  <g stroke="#5980a6" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 9 L38 9 A5 5 0 0 1 43 14 L43 34 A5 5 0 0 1 38 39 L22 39 A5 5 0 0 1 17 34 L17 29"/>
+    <path d="M17 19 L17 14 A5 5 0 0 1 22 9"/>
+    <path d="M3 10 L15 20"/>
+    <path d="M3 38 L15 28"/>
+  </g>
+  <circle cx="30" cy="24" r="4" fill="#5980a6" stroke="none"/>
+</svg>

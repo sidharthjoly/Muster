@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 157.41 33.20"
+     width="157" height="33" fill="none" color="#5980a6"
+     role="img" aria-label="Muster">
+  <!-- The mark and the word as one object, which is the whole reason this file
+       exists: set as HTML text the word renders in Barlow Condensed only where
+       Barlow Condensed loads, and these pages ship as a static export meant to
+       open from disk with no network. An outline cannot fall back to the system
+       face, so the lockup looks the same everywhere or not at all.
+
+       Rebuilding it: Barlow Condensed SemiBold (600), the face the pages already
+       set as their heading token, "MUSTER" in caps at .02em — the nav's own
+       letter-spacing. Cap height is 24.59 of these units, the mark's visual
+       height over 1.35. The 15 between them is the length of the race, which is
+       also the clear space the mark asks for, and it is measured ink to ink:
+       the M's left sidebearing is taken out first, or the gap reads wider than
+       it is. The box is tight to the ink on all four sides. The font is not
+       vendored here — these are outlines, and nothing at render time needs it.
+
+       `color` and `currentColor` behave as in `muster.svg`: fetched on its own
+       it is the Industry accent, inlined it takes whatever sets `color`. -->
+  <g transform="translate(-1.4 -7.4)" stroke="currentColor" stroke-width="3.2"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 9 L38 9 A5 5 0 0 1 43 14 L43 34 A5 5 0 0 1 38 39 L22 39 A5 5 0 0 1 17 34 L17 29"/>
+    <path d="M17 19 L17 14 A5 5 0 0 1 22 9"/>
+    <path d="M3 10 L15 20"/>
+    <path d="M3 38 L15 28"/>
+    <circle cx="30" cy="24" r="3.4" fill="currentColor" stroke="none"/>
+  </g>
+  <g fill="currentColor" transform="translate(56.41 28.90) scale(0.035132 -0.035132)">
+      <path d="M383 700H475Q480 700 483.5 696.5Q487 693 487 688V12Q487 7 483.5 3.5Q480 0 475 0H383Q378 0 374.5 3.5Q371 7 371 12V484Q371 488 369.0 488.0Q367 488 365 485L278 327Q273 319 269 319Q265 319 260 327L173 485Q171 488 169.0 488.0Q167 488 167 484V12Q167 7 163.5 3.5Q160 0 155 0H63Q58 0 54.5 3.5Q51 7 51 12V688Q51 693 54.5 696.5Q58 700 63 700H155Q165 700 170 692L267 521Q270 517 273 521L368 692Q373 700 383 700Z" transform="translate(0.0 0)"/>
+      <path d="M50 194V688Q50 693 53.5 696.5Q57 700 62 700H154Q159 700 162.5 696.5Q166 693 166 688V182Q166 142 186.0 117.0Q206 92 239 92Q272 92 292.0 117.0Q312 142 312 182V688Q312 693 315.5 696.5Q319 700 324 700H416Q421 700 424.5 696.5Q428 693 428 688V194Q428 103 376.0 47.5Q324 -8 239 -8Q153 -8 101.5 47.5Q50 103 50 194Z" transform="translate(558.0 0)"/>
+      <path d="M34 173V199Q34 204 37.5 207.5Q41 211 46 211H137Q142 211 145.5 207.5Q149 204 149 199V179Q149 140 168.5 116.0Q188 92 219 92Q250 92 270.0 114.5Q290 137 290 174Q290 200 279.0 219.0Q268 238 248.0 255.0Q228 272 184 304Q134 340 103.5 368.0Q73 396 52.5 435.5Q32 475 32 527Q32 610 82.0 659.0Q132 708 214 708Q297 708 348.0 656.5Q399 605 399 520V496Q399 491 395.5 487.5Q392 484 387 484H297Q292 484 288.5 487.5Q285 491 285 496V522Q285 561 265.5 584.5Q246 608 214 608Q184 608 165.0 586.5Q146 565 146 527Q146 491 166.5 466.0Q187 441 247 397Q308 352 339.0 323.5Q370 295 387.0 261.0Q404 227 404 180Q404 95 353.0 43.5Q302 -8 219 -8Q136 -8 85.0 42.0Q34 92 34 173Z" transform="translate(1056.0 0)"/>
+      <path d="M425 688V612Q425 607 421.5 603.5Q418 600 413 600H286Q281 600 281 595V12Q281 7 277.5 3.5Q274 0 269 0H177Q172 0 168.5 3.5Q165 7 165 12V595Q165 600 160 600H40Q35 600 31.5 603.5Q28 607 28 612V688Q28 693 31.5 696.5Q35 700 40 700H413Q418 700 421.5 696.5Q425 693 425 688Z" transform="translate(1510.0 0)"/>
+      <path d="M391 600H175Q170 600 170 595V406Q170 401 175 401H303Q308 401 311.5 397.5Q315 394 315 389V312Q315 307 311.5 303.5Q308 300 303 300H175Q170 300 170 295V105Q170 100 175 100H391Q396 100 399.5 96.5Q403 93 403 88V12Q403 7 399.5 3.5Q396 0 391 0H66Q61 0 57.5 3.5Q54 7 54 12V688Q54 693 57.5 696.5Q61 700 66 700H391Q396 700 399.5 696.5Q403 693 403 688V612Q403 607 399.5 603.5Q396 600 391 600Z" transform="translate(1982.0 0)"/>
+      <path d="M318 10 233 297Q231 301 228 301H175Q170 301 170 296V12Q170 7 166.5 3.5Q163 0 158 0H66Q61 0 57.5 3.5Q54 7 54 12V688Q54 693 57.5 696.5Q61 700 66 700H254Q307 700 347.5 674.5Q388 649 410.5 602.5Q433 556 433 496Q433 434 409.0 389.0Q385 344 342 321Q338 320 339 315L437 14Q438 12 438 9Q438 0 427 0H331Q321 0 318 10ZM170 595V396Q170 391 175 391H236Q272 391 294.5 419.0Q317 447 317 495Q317 543 294.5 571.5Q272 600 236 600H175Q170 600 170 595Z" transform="translate(2437.0 0)"/>
+  </g>
+</svg>
