@@ -1,0 +1,1313 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muster · API and MCP</title>
+<meta name="description" content="Muster's open data as plain JSON files, and an MCP server an AI assistant can search and rank against. No keys, no accounts.">
+<!-- Barlow is the Industry system's face, loaded as an enhancement rather than
+     a dependency: this page ships in the same static export as index.html and
+     falls back to the platform UI face with no network. -->
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap">
+<style>
+  /* ── Industry design system ──────────────────────────────────────────────
+     The reference half of the site: the published files and the MCP server,
+     on the same tokens as the other two pages. The block from START to END is
+     the third copy of the shared block — see runs.html's header comment.
+
+     Named api.html, not mcp.html: the Worker's route is
+     `muster.sidharthjoly.com/mcp*`, which would catch /mcp.html before
+     GitHub Pages ever saw the request.
+
+     This page is the one reference: docs/api.md and docs/mcp.md only point
+     here, so the prose has a single copy. It is written from mcp/index.ts, and
+     tests/test_static_pages.py holds its tool and argument lists to what the
+     server actually registers. */
+  /* ==== SHARED WITH THE OTHER PAGES — START. Edit all three, then run
+     tests/test_static_pages.py. ==== */
+  :root {
+    --color-bg:#f2f2f3;
+    --color-surface:#e9e9ea;
+    --color-text:#1d1f20;
+    --color-accent:#5980a6;
+    --color-divider:color-mix(in srgb, #1d1f20 16%, transparent);
+
+    /* Tonal ramps — one shared OKLCH lightness scale, so the same step of any
+       role matches the others in visual value. */
+    --color-neutral-100:#f5f5f8; --color-neutral-200:#e7e7ea;
+    --color-neutral-300:#d4d4d7; --color-neutral-400:#b7b7ba;
+    --color-neutral-500:#98989b; --color-neutral-600:#7a7a7d;
+    --color-neutral-700:#5d5d60; --color-neutral-800:#424244;
+    --color-neutral-900:#2b2b2d;
+
+    --color-accent-100:#eef6ff; --color-accent-200:#d6ebff;
+    --color-accent-300:#b5d9fd; --color-accent-400:#94bce3;
+    --color-accent-500:#749dc4; --color-accent-600:#597ea3;
+    --color-accent-700:#416180; --color-accent-800:#2c455d;
+    --color-accent-900:#1d2d3d;
+
+    --font-heading:"Barlow Condensed",system-ui,-apple-system,'Segoe UI',sans-serif;
+    --font-heading-weight:600;
+    --font-body:Barlow,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+
+    --space-1:3.4px; --space-2:6.8px; --space-3:10.2px;
+    --space-4:13.6px; --space-6:20.4px; --space-8:27.2px;
+
+    --radius-sm:2px; --radius-md:4px; --radius-lg:7px;
+
+    --shadow-sm:0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
+    --shadow-md:0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent);
+    --shadow-lg:0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
+
+    /* Page-local: the two dial series. `opened` is the accent, `closed` a
+       neutral — the system is mono, so the second series is a value step
+       rather than a second hue. */
+    --up:var(--color-accent);
+    --dn:var(--color-neutral-400);
+  }
+
+  *, *::before, *::after { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--color-bg); color:var(--color-text);
+    font-family:var(--font-body); font-size:15px; line-height:1.55;
+    font-weight:400; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); line-height:1.12;
+    letter-spacing:-0.015em; margin:0 0 var(--space-2); }
+  h1 { font-size:42px; } h2 { font-size:32px; } h3 { font-size:25px; }
+  h4 { font-size:20px; } h5 { font-size:16px; }
+  h6 { font-size:13px; letter-spacing:0.08em; text-transform:uppercase; }
+  p { margin:0 0 var(--space-3); }
+  a { color:var(--color-accent); text-underline-offset:3px; }
+  a:hover { color:var(--color-accent-700); }
+  .text-muted { color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  :focus { outline:none; }
+  :focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }
+  ::selection { background:color-mix(in srgb, var(--color-accent) 30%, transparent); }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden;
+    clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
+
+  /* — blueprint frame: the wireframe object every figure and panel wears — */
+  .blueprint { position:relative; border:1px solid var(--color-divider);
+    border-radius:0; }
+  .blueprint > .corner { position:absolute; width:11px; height:11px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .blueprint > .corner::before, .blueprint > .corner::after {
+    content:""; position:absolute; background:currentColor; }
+  .blueprint > .corner::before { left:5px; top:0; width:1px; height:100%; }
+  .blueprint > .corner::after { top:5px; left:0; width:100%; height:1px; }
+  .blueprint > .corner.tl { top:-6px; left:-6px; }
+  .blueprint > .corner.tr { top:-6px; right:-6px; }
+  .blueprint > .corner.bl { bottom:-6px; left:-6px; }
+  .blueprint > .corner.br { bottom:-6px; right:-6px; }
+
+  /* — buttons — */
+  .btn { display:inline-flex; align-items:center; justify-content:center;
+    gap:6px; cursor:pointer; text-decoration:none;
+    font-family:var(--font-heading); font-weight:var(--font-heading-weight);
+    font-size:14px; line-height:1.2; color:var(--color-text);
+    background:transparent; border:1px solid var(--color-divider);
+    padding:var(--space-2) calc(var(--space-3) * 1.2); border-radius:0; }
+  .btn svg { display:block; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .btn-primary { background:var(--color-accent); color:var(--color-bg);
+    border-color:var(--color-accent); }
+  .btn-primary:hover { background:var(--color-accent-600); }
+  .btn-primary:active { background:var(--color-accent-700); }
+  .btn-secondary:hover { background:color-mix(in srgb, var(--color-text) 7%, transparent); }
+  .btn-secondary:active { background:color-mix(in srgb, var(--color-text) 14%, transparent); }
+
+  /* — the header bar — */
+  .nav { display:flex; align-items:center; gap:var(--space-6);
+    max-width:1160px; margin:0 auto; padding:var(--space-3) var(--space-6); }
+  .nav-brand { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:17px;
+    letter-spacing:.02em; margin-right:auto; color:inherit;
+    text-decoration:none; }
+  .nav-brand em { font-style:normal; color:var(--color-accent); }
+  .nav-brand { display:inline-flex; align-items:center; gap:.45em; }
+  .nav-mark { width:1.15em; height:1.15em; flex:none; color:var(--color-accent); }
+  .nav a { color:inherit; text-decoration:none; font-size:14px; }
+  .nav a:hover, .nav a[aria-current='page'] { color:var(--color-accent); }
+  header.bar { border-bottom:1px solid var(--color-divider);
+    background:var(--color-bg); }
+  /* ==== SHARED WITH THE OTHER PAGES — END ==== */
+
+  /* ── Borrowed, lightly ─────────────────────────────────────────────────────
+     A few structural cues from an API reference in another design language:
+     worked examples on white cards with a darker hairline, a mono header strip
+     naming the call, method tags in the rail, and string values tinted. The
+     palette, type, frames and corner marks stay Muster's own. White and the
+     darker line live here, after the END marker, so the shared block stays
+     identical across pages. Mono labels and tints on white use accent-700:
+     the base steel is about 4.2:1 on white, under what small text needs. */
+  :root {
+    --paper:#ffffff;
+    --ink-line:color-mix(in srgb, var(--color-text) 82%, transparent);
+    --mono:ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  /* — the shell, matching index.html — */
+  .wrap { max-width:1160px; width:100%; margin:0 auto;
+    padding:0 var(--space-6); }
+  .title { display:flex; align-items:flex-end; gap:var(--space-6);
+    flex-wrap:wrap; padding-top:var(--space-8); }
+  .title h1 { font-size:18px; margin:0; }
+  .title .scope { font-size:12px; }
+  .meta { margin-left:auto; display:flex; align-items:center;
+    gap:var(--space-4); font-size:12px; }
+  .swept { display:flex; align-items:center; gap:7px; }
+  .swept[hidden] { display:none; }
+  .swept i { width:7px; height:7px; background:var(--color-accent);
+    display:inline-block; }
+
+  /* — contents rail beside one reading column — */
+  .doc { max-width:1160px; width:100%; margin:0 auto;
+    padding:var(--space-6) var(--space-6) var(--space-8); flex:1;
+    display:grid; grid-template-columns:180px minmax(0,1fr);
+    gap:var(--space-8); align-items:start; }
+  .toc { position:sticky; top:var(--space-6); display:flex;
+    flex-direction:column; gap:var(--space-6); font-size:13px; }
+  .toc h6 { margin:0 0 var(--space-2);
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .toc a { display:flex; align-items:baseline; gap:var(--space-2);
+    padding:3px 0 3px var(--space-3); color:inherit; text-decoration:none;
+    border-left:1px solid var(--color-divider); }
+  .toc a:hover { color:var(--color-accent); }
+  .toc a[aria-current] { color:var(--color-accent);
+    border-left-color:var(--color-accent); }
+  .toc code { background:none; padding:0; font-size:12px; }
+  .toc .verb { margin-left:auto; font-size:9.5px; }
+  .col { display:flex; flex-direction:column; gap:var(--space-8); min-width:0; }
+
+  /* — sections — */
+  .card { padding:var(--space-6); scroll-margin-top:var(--space-6); }
+  .card h2 { font-size:25px; margin-bottom:var(--space-3); }
+  .card h2 code { font-size:.8em; }
+  .card h3 { font-size:17px; margin:var(--space-6) 0 var(--space-2);
+    scroll-margin-top:var(--space-6); }
+  .card h6 { margin:var(--space-4) 0 0;
+    color:color-mix(in srgb, var(--color-text) 60%, transparent); }
+  .card p, .card ul { max-width:76ch; }
+  .card ul { margin:0 0 var(--space-3); padding-left:1.2em; }
+  .card li + li { margin-top:var(--space-1); }
+  .part { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:13px;
+    letter-spacing:.08em; text-transform:uppercase;
+    margin-bottom:calc(var(--space-4) * -1);
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .callout { margin:var(--space-4) 0 0; padding:var(--space-3) var(--space-4);
+    border-left:2px solid var(--color-accent);
+    background:color-mix(in srgb, var(--color-accent) 7%, transparent); }
+  .callout p { margin:0; }
+  .callout p + p { margin-top:var(--space-2); }
+  .installs { display:flex; gap:var(--space-2); flex-wrap:wrap;
+    margin-bottom:var(--space-4); }
+  .more { font-size:13.5px; }
+
+  /* — the overview: a big title under two hairline badges — */
+  .badges { display:flex; gap:var(--space-2); flex-wrap:wrap;
+    margin-bottom:var(--space-3); }
+  .badges span { font-family:var(--mono); font-size:11px; padding:1px 7px;
+    border:1px solid var(--color-divider);
+    color:color-mix(in srgb, var(--color-text) 65%, transparent); }
+  .card h2.big { font-size:42px; line-height:1.02; letter-spacing:-.02em;
+    margin-bottom:var(--space-4); }
+  .lead { font-size:16.5px; }
+
+  /* — two columns: the prose, and the worked examples beside it — */
+  .op { display:grid; grid-template-columns:minmax(0,1fr); gap:var(--space-4) var(--space-8); }
+  .op-side > .xcard:last-child { margin-bottom:0; }
+
+  /* — example cards — */
+  .xcard { background:var(--paper); border:1px solid var(--ink-line);
+    margin:0 0 var(--space-4); min-width:0; }
+  .xhead { display:flex; align-items:stretch; min-height:34px;
+    border-bottom:1px solid var(--color-divider); font-family:var(--mono);
+    font-size:12px; }
+  .xhead > span { display:flex; align-items:center; padding:0 0 0 var(--space-3); }
+  .xhead .path { min-width:0; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; padding-right:var(--space-3); }
+  .xhead .name { font-family:var(--font-body); font-size:13px; font-weight:500; }
+  .verb { font-family:var(--mono); font-weight:600; letter-spacing:.04em;
+    color:var(--color-accent-700); }
+  .copy { margin-left:auto; flex:none; border:0;
+    border-left:1px solid var(--color-divider); padding:0 var(--space-3);
+    font-size:12px; }
+  .xcard pre { margin:0; padding:var(--space-4); overflow-x:auto;
+    font-family:var(--mono); font-size:12.5px; line-height:1.6; tab-size:2; }
+  .xcard pre code { background:none; padding:0; font-size:inherit; }
+  /* A request card that can be sent: the body is editable in place, and the
+     footer carries the one filled button on the card. */
+  .xcard pre code[contenteditable] { display:block; outline:none;
+    caret-color:var(--color-accent-700); }
+  .xcard[data-send]:focus-within { border-color:var(--color-accent-700); }
+  .xfoot { display:flex; align-items:center; gap:var(--space-2);
+    padding:var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+    border-top:1px solid var(--color-divider); }
+  .xfoot .hint { margin-right:auto; font-size:12px; line-height:1.4;
+    color:color-mix(in srgb, var(--color-text) 60%, transparent); }
+  .xfoot .hint.bad { color:var(--color-text); font-weight:500; }
+  .xfoot .btn { font-size:13px; white-space:nowrap; }
+  .xfoot .btn[hidden] { display:none; }
+  .xhead .stat { margin-left:auto; padding-right:var(--space-3);
+    color:color-mix(in srgb, var(--color-text) 60%, transparent); }
+  /* String and literal values in the deep accent, keys in ink. */
+  .tok-s, .tok-v { color:var(--color-accent-700); }
+  .card .ops { list-style:none; margin:0; padding:var(--space-2) 0; max-width:none; }
+  .ops li { display:flex; gap:var(--space-3); align-items:baseline;
+    padding:5px var(--space-3); margin:0; font-family:var(--mono);
+    font-size:12.5px; }
+  .card .ops li + li { margin-top:0; }
+  .ops .verb { min-width:4.2em; font-size:11.5px; }
+  .ops a { color:var(--color-text); text-decoration:none; min-width:0;
+    overflow-wrap:anywhere; }
+  .ops a:hover { color:var(--color-accent-700); text-decoration:underline; }
+  .ops .d { display:block; font-family:var(--font-body); font-size:12.5px;
+    color:color-mix(in srgb, var(--color-text) 60%, transparent); }
+
+  /* — inline code. Allowed to break anywhere: names like
+     `identical_openings_at_this_employer` are wider than a small phone. — */
+  code { font-family:var(--mono); font-size:.9em; padding:1px 5px;
+    background:color-mix(in srgb, var(--color-text) 7%, transparent);
+    overflow-wrap:anywhere; }
+
+  /* — arguments: stacked, because the column beside the examples is narrow — */
+  .card .params { list-style:none; margin:var(--space-2) 0 var(--space-4);
+    padding:0; max-width:none; border-top:1px solid var(--color-divider); }
+  .card .params li { margin:0; padding:var(--space-3) 0;
+    border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+  .sig { display:flex; align-items:baseline; gap:var(--space-2); flex-wrap:wrap; }
+  .sig > code:first-child { background:none; padding:0; font-weight:600;
+    font-size:13.5px; }
+  .sig .t { font-family:var(--mono); font-size:12px;
+    color:color-mix(in srgb, var(--color-text) 60%, transparent); }
+  .sig .req { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--color-accent-700); font-weight:500; }
+  .card .params li p { margin:var(--space-1) 0 0; font-size:14px; }
+
+  /* — reference tables, for the two sections wide enough to hold one — */
+  .scroll { overflow-x:auto; margin:0 0 var(--space-4); }
+  .ref { width:100%; border-collapse:collapse; font-size:13.5px; }
+  .ref th { text-align:left; font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; padding:var(--space-2);
+    color:color-mix(in srgb, var(--color-text) 60%, transparent);
+    border-bottom:1px solid var(--color-divider); white-space:nowrap; }
+  .ref td { padding:var(--space-3) var(--space-2); vertical-align:top;
+    border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+  .ref td:first-child { white-space:nowrap; }
+  .ref td.t { white-space:nowrap;
+    color:color-mix(in srgb, var(--color-text) 60%, transparent); }
+
+  /* — footer, matching index.html — */
+  footer { border-top:1px solid var(--color-divider); }
+  footer .in { max-width:1160px; margin:0 auto; padding:var(--space-6);
+    display:flex; gap:var(--space-6) var(--space-8); flex-wrap:wrap;
+    align-items:baseline; font-size:12.5px;
+    color:color-mix(in srgb, var(--color-text) 55%, transparent); }
+  footer .brand { font-family:var(--font-heading);
+    font-weight:var(--font-heading-weight); font-size:14px; letter-spacing:.02em;
+    color:var(--color-text); }
+  footer .r { margin-left:auto; }
+
+  /* — wide: the examples take the right-hand column and stay in view — */
+  @media (min-width:1100px) {
+    .op { grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:start; }
+    .op-side { position:sticky; top:var(--space-6); }
+    .op-main > :last-child { margin-bottom:0; }
+  }
+
+  /* — narrow — */
+  @media (max-width:820px) {
+    .nav { gap:var(--space-4); flex-wrap:wrap; }
+    .nav .acts { width:100%; }
+    .title { padding-top:var(--space-6); }
+    .meta { margin-left:0; width:100%; }
+    .doc { grid-template-columns:minmax(0,1fr); gap:var(--space-6); }
+    /* The rail becomes a two-column index above the reading column: the
+       page is long on a phone, and the contents are what make it usable. */
+    .toc { position:static; display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      gap:var(--space-4) var(--space-6); }
+    .toc > div:first-child { grid-column:1 / -1; }
+    .card { padding:var(--space-4); }
+    .card h2 { font-size:22px; }
+    .card h2.big { font-size:32px; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    * { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+  }
+</style>
+
+<div style="min-height:100vh;display:flex;flex-direction:column">
+
+  <header class="bar">
+    <nav class="nav">
+      <a class="nav-brand" href="./"><svg class="nav-mark" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 9 L38 9 A5 5 0 0 1 43 14 L43 34 A5 5 0 0 1 38 39 L22 39 A5 5 0 0 1 17 34 L17 29"/><path d="M17 19 L17 14 A5 5 0 0 1 22 9"/><path d="M3 10 L15 20"/><path d="M3 38 L15 28"/><circle cx="30" cy="24" r="3.4" fill="currentColor" stroke="none"/></svg>MUSTER</a>
+      <a href="./">Roles</a>
+      <a href="./#subscribe">Weekly email</a>
+      <a href="api.html" aria-current="page">API</a>
+      <div class="acts" style="display:flex;align-items:center;gap:var(--space-2);margin-left:var(--space-4)">
+        <a class="btn btn-secondary" href="https://github.com/sidharthjoly/Muster">Method</a>
+      </div>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <div class="title">
+      <h1>API &amp; MCP</h1>
+      <span class="scope text-muted">open data &middot; no keys &middot; no accounts</span>
+      <div class="meta text-muted">
+        <span class="swept" id="swept" hidden><i></i><span id="swept-text"></span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc">
+    <nav class="toc" aria-label="On this page">
+      <div>
+        <h6>Start</h6>
+        <a href="#overview">Overview</a>
+      </div>
+      <div>
+        <h6>Data files</h6>
+        <a href="#files">The files <span class="verb">GET</span></a>
+        <a href="#row">A row</a>
+        <a href="#slice">The data slice</a>
+        <a href="#versioning">Versioning</a>
+        <a href="#weekly">Weekly RSS <span class="verb">GET</span></a>
+      </div>
+      <div>
+        <h6>MCP server</h6>
+        <a href="#mcp">The endpoint <span class="verb">POST</span></a>
+        <a href="#connect">Connecting</a>
+        <a href="#envelope">Snapshot envelope</a>
+        <a href="#search_roles"><code>search_roles</code> <span class="verb">TOOL</span></a>
+        <a href="#get_role"><code>get_role</code> <span class="verb">TOOL</span></a>
+        <a href="#index_health"><code>index_health</code> <span class="verb">TOOL</span></a>
+        <a href="#match_resume"><code>match_resume</code> <span class="verb">TOOL</span></a>
+        <a href="#worker">How it runs</a>
+      </div>
+    </nav>
+
+    <main class="col">
+
+      <section class="card blueprint" id="overview">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="op">
+          <div class="op-main">
+            <div class="badges"><span>data/v1</span><span>MCP &middot; Streamable HTTP</span></div>
+            <h2 class="big">Muster&rsquo;s index, for scripts and agents</h2>
+            <p class="lead">Everything the site shows is also published two ways: as plain
+              JSON files you can fetch, and as an MCP server an AI assistant can search.
+              Both are free. There are no keys, no accounts and no rate limits.</p>
+            <p>The files are static JSON on the same host as this page, served with
+              <code>access-control-allow-origin: *</code>, so a browser, a script or
+              an agent can read them directly. <a href="#files">The files &rarr;</a></p>
+            <p>The MCP server lets Claude, Cursor or VS Code search open roles, look
+              one up, and rank them against your r&eacute;sum&eacute;.
+              <a href="#connect">Connecting &rarr;</a></p>
+            <div class="callout">
+              <p><b>Everything here is a snapshot.</b> The sweep rebuilds these files
+                from Postgres several times a day. They hold the roles that were open
+                when the export ran, not what is open this minute.
+                <code>manifest.json</code> has the build time in
+                <code>generated_at</code>, and every MCP result repeats it. Read it
+                before you quote a number.</p>
+              <p id="now" hidden></p>
+            </div>
+          </div>
+          <div class="op-side">
+            <div class="xcard" data-copy>
+              <div class="xhead"><span class="name">Base URL</span></div>
+              <pre><code>https://muster.sidharthjoly.com</code></pre>
+            </div>
+            <div class="xcard">
+              <div class="xhead"><span class="name">Endpoints</span></div>
+              <ul class="ops">
+                <li><span class="verb">GET</span><a href="data/v1/manifest.json">/data/v1/manifest.json</a></li>
+                <li><span class="verb">GET</span><a href="data/v1/jobs-data.json">/data/v1/jobs-data.json</a></li>
+                <li><span class="verb">GET</span><a href="data/v1/jobs.json">/data/v1/jobs.json</a></li>
+                <li><span class="verb">GET</span><a href="data/v1/health.json">/data/v1/health.json</a></li>
+                <li><span class="verb">GET</span><a href="weekly.xml">/weekly.xml</a></li>
+                <li><span class="verb">POST</span><a href="#mcp">/mcp</a></li>
+              </ul>
+            </div>
+            <div class="xcard" data-copy>
+              <div class="xhead"><span class="verb">SHELL</span><span class="path">the data slice</span></div>
+              <pre><code>curl -s --compressed https://muster.sidharthjoly.com/data/v1/jobs-data.json</code></pre>
+            </div>
+            <div class="xcard" data-copy>
+              <div class="xhead"><span class="verb">SHELL</span><span class="path">add to Claude Code</span></div>
+              <pre><code>claude mcp add --transport http muster https://muster.sidharthjoly.com/mcp</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="part">Data files</div>
+
+      <section class="card blueprint" id="files">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <h2>The files</h2>
+        <p>Australian open roles only, under
+          <code>https://muster.sidharthjoly.com/data/v1/</code>. Sizes are what travels
+          over the wire with compression on.</p>
+        <div class="scroll">
+          <table class="ref">
+            <thead><tr><th>File</th><th>Size</th><th>What it holds</th></tr></thead>
+            <tbody>
+              <tr><td><a href="data/v1/manifest.json"><code>manifest.json</code></a></td><td class="t">~3 KB</td>
+                <td>The build time, counts, the matching vocabularies, and the weekly
+                  open/close series behind the site&rsquo;s chart. Small enough to
+                  poll. Fetch this first.</td></tr>
+              <tr><td><a href="data/v1/jobs-data.json"><code>jobs-data.json</code></a></td><td class="t">~170 KB</td>
+                <td>The data, analytics and ML slice: a few hundred roles. This is
+                  what the index is for, at one-twelfth the size of the full file.
+                  Start here.</td></tr>
+              <tr><td><a href="data/v1/jobs.json"><code>jobs.json</code></a></td><td class="t">~2.2 MB</td>
+                <td>Every open role in Australia, several thousand of them. Use it
+                  for the whole labour market rather than the data slice. It is
+                  about 10 MB of JSON once decompressed.</td></tr>
+              <tr><td><a href="data/v1/health.json"><code>health.json</code></a></td><td class="t">~6 KB</td>
+                <td>Sweep results per board and per vendor: what failed, and how
+                  many hours behind the oldest board is.</td></tr>
+              <tr><td><a href="weekly.xml"><code>weekly.xml</code></a></td><td class="t">small</td>
+                <td>An RSS feed of new data roles, one item per week, at the site
+                  root rather than under <code>data/</code>. See
+                  <a href="#weekly">Weekly RSS</a>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Polling</h3>
+        <p>Fetch <code>manifest.json</code> and download the rows only when
+          <code>generated_at</code> has changed. Every file carries an
+          <code>ETag</code> and <code>cache-control: max-age=600</code>, so a
+          conditional request takes one round trip and returns no body when
+          nothing has changed.</p>
+        <p>There is no server behind these: they are static files on a CDN, which
+          is why there is nothing to authenticate against and nothing to
+          rate-limit.</p>
+      </section>
+
+      <section class="card blueprint" id="row">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <h2>A row</h2>
+        <p><code>jobs.json</code> and <code>jobs-data.json</code> are both flat arrays
+          of these. <b>A key whose value would be null or empty is left out</b>
+          rather than written as null, so a missing key means &ldquo;not published
+          for this role&rdquo;. That is normal, not an error.</p>
+        <div class="scroll">
+          <table class="ref">
+            <thead><tr><th>Key</th><th>On</th><th>What it is</th></tr></thead>
+            <tbody>
+              <tr><td><code>ats_vendor</code></td><td class="t">every row</td>
+                <td>The hiring system: <code>greenhouse</code>, <code>workday</code>,
+                  <code>lever</code>, <code>ashby</code>, <code>smartrecruiters</code>,
+                  <code>oracle</code> or <code>eightfold</code>.</td></tr>
+              <tr><td><code>board_token</code></td><td class="t">every row</td>
+                <td>The employer&rsquo;s board in that system. With
+                  <code>external_id</code>, it identifies the role.</td></tr>
+              <tr><td><code>external_id</code></td><td class="t">every row</td>
+                <td>The role&rsquo;s own ID in the ATS. One role, one row.</td></tr>
+              <tr><td><code>title</code></td><td class="t">every row</td>
+                <td>The job title as the employer wrote it.</td></tr>
+              <tr><td><code>company</code></td><td class="t">every row</td>
+                <td>The clean employer name, or the raw board token where no clean
+                  name is known.</td></tr>
+              <tr><td><code>apply_url</code></td><td class="t">every row</td>
+                <td>The employer&rsquo;s own application form.</td></tr>
+              <tr><td><code>remote_type</code></td><td class="t">every row</td>
+                <td>The employer&rsquo;s remote-work field. Often <code>unknown</code>.</td></tr>
+              <tr><td><code>posted_at</code></td><td class="t">~99.5%</td>
+                <td>ISO 8601. About 40 rows lack it and carry
+                  <code>first_seen_at</code> instead.</td></tr>
+              <tr><td><code>first_seen_at</code></td><td class="t">~0.5%</td>
+                <td>Fallback for <code>posted_at</code>. Present only when
+                  <code>posted_at</code> is missing.</td></tr>
+              <tr><td><code>location_city</code></td><td class="t">~94%</td>
+                <td>The city, as the employer gave it.</td></tr>
+              <tr><td><code>location_raw</code></td><td class="t">~6%</td>
+                <td>Fallback for <code>location_city</code>, when no city could be
+                  read.</td></tr>
+              <tr><td><code>salary_min</code>, <code>salary_max</code>,<br><code>salary_currency</code></td><td class="t">~0.6%</td>
+                <td>A structured salary band. Only about 50 roles publish one, so
+                  filtering on it hides almost everything.</td></tr>
+              <tr><td><code>kw</code></td><td class="t">~95%</td>
+                <td>The role&rsquo;s indexed vocabulary: the rare words in the ad.
+                  Any word carried by more than 4% of roles is dropped, so common
+                  tools are deliberately absent.</td></tr>
+              <tr><td><code>sk</code></td><td class="t">~35%</td>
+                <td>Skills found in the ad, from the closed list in
+                  <code>manifest.json</code>. <b>Ranking uses this, not
+                  <code>kw</code>.</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-muted">Coverage figures were measured on the 18 September 2026
+          build, which had about 9,200 open roles and 490 in the data slice. They move
+          a little with every sweep.</p>
+        <ul>
+          <li><code>first_seen_at</code> and <code>location_raw</code> are fallbacks.
+            Read them only when <code>posted_at</code> or <code>location_city</code>
+            is missing, never as fields in their own right.</li>
+          <li>About 5% of rows have neither <code>kw</code> nor <code>sk</code>,
+            because the employer published no description. They can be found by
+            title and employer, but cannot be ranked against a r&eacute;sum&eacute;.</li>
+          <li>There is no description field. The export reads each ad to build
+            <code>kw</code> and <code>sk</code>, then drops the text: it would be
+            most of the file, and the site shows no summary.</li>
+          <li>When <code>title</code> and <code>apply_url</code> disagree, trust the
+            title. Workday fixes a role&rsquo;s URL slug when the requisition opens
+            and never changes it, so a retitled role keeps its old words in the
+            link. Requisition <code>762190WD</code>, for example, appears on two PwC
+            boards with different slugs.</li>
+        </ul>
+      </section>
+
+      <section class="card blueprint" id="slice">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="op">
+          <div class="op-main">
+            <h2>The data slice</h2>
+            <p><code>jobs-data.json</code> is the rows of <code>jobs.json</code> whose
+              title passes the test beside this, using the <code>data_terms</code> and
+              <code>analyst_exclude</code> lists from the manifest.</p>
+            <p>The terms live in the manifest rather than on this page on purpose. The
+              rule is <code>DATA_TERMS</code> and <code>ANALYST_EXCLUDE</code> in
+              <a href="https://github.com/sidharthjoly/Muster/blob/main/src/muster/search.py"><code>muster/search.py</code></a>,
+              and three things already read it: the SQL filter, the site and the
+              export. A fourth copy typed out here would go stale.</p>
+          </div>
+          <div class="op-side">
+            <div class="xcard" data-copy>
+              <div class="xhead"><span class="verb">JS</span><span class="path">isDataRole</span></div>
+              <pre><code>const s = ` ${title.toLowerCase()} `;
+const isDataRole = m.data_terms.some(t =&gt; s.includes(t))
+  || (s.includes('analyst')
+      &amp;&amp; !m.analyst_exclude.some(x =&gt; s.includes(x)));</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card blueprint" id="versioning">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <h2>Versioning</h2>
+        <p><code>data/v1/</code> is the published path. Build against it.</p>
+        <p>The same files also sit at <code>data/</code>, which is what the
+          site&rsquo;s own pages fetch. That path is older, unversioned, and may
+          change without notice.</p>
+        <p>Expect rows to lose columns rather than gain them: the export gets
+          smaller by dropping what nothing reads. A removal that would break a
+          reader goes out as <code>v2/</code>, and <code>v1/</code> keeps its
+          shape.</p>
+      </section>
+
+      <section class="card blueprint" id="weekly">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <h2>Weekly RSS</h2>
+        <p><a href="weekly.xml"><code>weekly.xml</code></a> is an RSS feed, not JSON,
+          meant for a feed reader or an RSS-to-email service. It has one item per
+          finished week (Monday to Sunday, Sydney time) for the last eight weeks.</p>
+        <ul>
+          <li>Each item counts the data and AI roles that first appeared on Muster
+            that week and were still open when the feed was built, and lists up to
+            ten of them: the most recently posted, at most two per employer.</li>
+          <li>Weeks go by when Muster first saw a role, not by the employer&rsquo;s
+            posting date, so a week is complete as soon as it ends.</li>
+          <li>Each item&rsquo;s <code>guid</code> names its week and never changes,
+            so a mail service sends each week once.</li>
+          <li>The week the index started is left out, because every role was
+            &ldquo;new&rdquo; that week.</li>
+        </ul>
+      </section>
+
+      <div class="part">MCP server</div>
+
+      <section class="card blueprint" id="mcp">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="op">
+          <div class="op-main">
+            <h2>The endpoint</h2>
+            <p>An <a href="https://modelcontextprotocol.io">MCP</a> server over the same
+              index. It does the filtering and ranking server-side, so a model can
+              search roles, look one up, check the index&rsquo;s health and rank a
+              r&eacute;sum&eacute; without holding 10 MB of JSON in its context.</p>
+            <p>Streamable HTTP transport. There is no authentication and no rate limit:
+              everything it serves is already public in the <a href="#files">files
+              above</a>, so a key would protect nothing.</p>
+            <p>A web page on any site can call it from the browser: it answers CORS
+              preflights with <code>access-control-allow-origin: *</code>, as the
+              files do.</p>
+          </div>
+          <div class="op-side">
+            <div class="xcard" data-copy>
+              <div class="xhead"><span class="verb">POST</span><span class="path">/mcp</span></div>
+              <pre><code>https://muster.sidharthjoly.com/mcp</code></pre>
+            </div>
+            <div class="xcard">
+              <div class="xhead"><span class="name">Tools</span></div>
+              <ul class="ops">
+                <li><span class="verb">TOOL</span><span><a href="#search_roles">search_roles</a>
+                  <span class="d">Open roles matching words, city, employer or dates.</span></span></li>
+                <li><span class="verb">TOOL</span><span><a href="#get_role">get_role</a>
+                  <span class="d">One role, and how many identical openings its employer has.</span></span></li>
+                <li><span class="verb">TOOL</span><span><a href="#index_health">index_health</a>
+                  <span class="d">How fresh the index is, what it covers, where it fails.</span></span></li>
+                <li><span class="verb">TOOL</span><span><a href="#match_resume">match_resume</a>
+                  <span class="d">Open roles ranked against a r&eacute;sum&eacute;&rsquo;s text.</span></span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card blueprint" id="connect">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="op">
+          <div class="op-main">
+            <h2>Connecting</h2>
+            <p>One click, if your editor takes an install link. Both carry what the
+              cards beside this write out by hand: a transport and a URL, no key,
+              nothing to fill in.</p>
+            <div class="installs">
+              <a class="btn btn-secondary" href="https://vscode.dev/redirect/mcp/install?name=muster&amp;config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmuster.sidharthjoly.com%2Fmcp%22%7D">Add to VS Code</a>
+              <a class="btn btn-secondary" href="https://cursor.com/en/install-mcp?name=muster&amp;config=eyJ1cmwiOiJodHRwczovL211c3Rlci5zaWRoYXJ0aGpvbHkuY29tL21jcCJ9">Add to Cursor</a>
+            </div>
+            <p>Claude Code takes the one-line command. Claude Desktop, Cursor and most
+              other clients take the JSON config.</p>
+            <h3>Directly</h3>
+            <p>It is a plain <code>POST</code> of JSON-RPC, and the <code>Accept</code>
+              header is required by the transport. The response comes back as one
+              server-sent event: strip the <code>event:</code> and <code>data:</code>
+              prefixes to get the JSON body.</p>
+            <p>A tool&rsquo;s answer is itself a JSON document, carried as text in
+              <code>result.content[0].text</code>. The result cards on this page show
+              it parsed.</p>
+            <p>Every tool&rsquo;s request card below can be edited and sent from this
+              page. The answer is the live index, not the example beside it.</p>
+          </div>
+          <div class="op-side">
+            <div class="xcard" data-copy>
+              <div class="xhead"><span class="verb">SHELL</span><span class="path">Claude Code</span></div>
+              <pre><code>claude mcp add --transport http muster https://muster.sidharthjoly.com/mcp</code></pre>
+            </div>
+            <div class="xcard" data-copy>
+              <div class="xhead"><span class="verb">JSON</span><span class="path">client config</span></div>
+              <pre><code class="json">{
+  "mcpServers": {
+    "muster": {
+      "type": "http",
+      "url": "https://muster.sidharthjoly.com/mcp"
+    }
+  }
+}</code></pre>
+            </div>
+            <div class="xcard" data-copy>
+              <div class="xhead"><span class="verb">SHELL</span><span class="path">list the tools</span></div>
+              <pre><code>curl -s -X POST https://muster.sidharthjoly.com/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card blueprint" id="envelope">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="op">
+          <div class="op-main">
+            <h2>The snapshot envelope</h2>
+            <p>Every tool result, error shapes included, carries a
+              <code>snapshot</code> object.</p>
+            <p>The site shows the build time in its header. A tool result has no
+              header, and a model that cannot see the age of what it is reading will
+              state a four-hour-old count as current, so the age travels in the
+              payload instead.</p>
+            <p class="text-muted">The counts in the examples below are illustrative.
+              Every one of them has changed since they were written.</p>
+          </div>
+          <div class="op-side">
+            <div class="xcard">
+              <div class="xhead"><span class="verb">JSON</span><span class="path">in every result</span></div>
+              <pre><code class="json">"snapshot": {
+  "generated_at": "2026-09-18T08:31:37.821928+00:00",
+  "age_hours": 0.3,
+  "note": "Muster publishes a static export rebuilt about four times a day. ..."
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card blueprint tool" id="search_roles">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="op">
+          <div class="op-main">
+            <h2><code>search_roles</code></h2>
+            <p>Search open roles in Australia. Defaults to the data, analytics and ML
+              slice.</p>
+            <h6>Arguments</h6>
+            <ul class="params">
+              <li><div class="sig"><code>q</code><span class="t">string</span></div>
+                <p>Words that must all appear in the title, the employer or the
+                  role&rsquo;s vocabulary (<a href="#row"><code>kw</code></a>).
+                  Case-insensitive and matches parts of words. Very common words are
+                  not in the vocabulary, so <code>python</code> matches on titles only;
+                  to search by skill, use <a href="#match_resume"><code>match_resume</code></a>.</p></li>
+              <li><div class="sig"><code>scope</code><span class="t">data | all</span></div>
+                <p><code>data</code> (default) is the data, analytics and ML slice.
+                  <code>all</code> is every open role in Australia.</p></li>
+              <li><div class="sig"><code>city</code><span class="t">string</span></div>
+                <p>Exact match on the employer&rsquo;s city, e.g. <code>Sydney</code>.
+                  Rows with only a <code>location_raw</code> never match.</p></li>
+              <li><div class="sig"><code>company</code><span class="t">string</span></div>
+                <p>Any part of the employer&rsquo;s name, case-insensitive.</p></li>
+              <li><div class="sig"><code>ats</code><span class="t">string</span></div>
+                <p>One of <code>greenhouse</code>, <code>workday</code>,
+                  <code>lever</code>, <code>ashby</code>, <code>smartrecruiters</code>,
+                  <code>oracle</code>, <code>eightfold</code>.</p></li>
+              <li><div class="sig"><code>remote</code><span class="t">string</span></div>
+                <p>Exact match on the employer&rsquo;s own field, e.g.
+                  <code>remote</code> or <code>hybrid</code>. Often <code>unknown</code>.</p></li>
+              <li><div class="sig"><code>since</code><span class="t">date</span></div>
+                <p>Posted on or after this date, <code>YYYY-MM-DD</code>.</p></li>
+              <li><div class="sig"><code>until</code><span class="t">date</span></div>
+                <p>Posted strictly before this date, <code>YYYY-MM-DD</code>. With
+                  either date set, rows with no date are left out.</p></li>
+              <li><div class="sig"><code>has_salary</code><span class="t">boolean</span></div>
+                <p>Only roles publishing a salary band: under 1% of them.</p></li>
+              <li><div class="sig"><code>sort</code><span class="t">newest | salary</span></div>
+                <p><code>newest</code> by default. <code>salary</code> sorts by the
+                  top of the band, with unbanded roles last.</p></li>
+              <li><div class="sig"><code>limit</code><span class="t">integer</span></div>
+                <p>1 to 200. Default 25.</p></li>
+              <li><div class="sig"><code>offset</code><span class="t">integer</span></div>
+                <p>For paging. Default 0. <code>total</code> says how far there is
+                  to go.</p></li>
+            </ul>
+            <ul>
+              <li><code>total</code> counts every match, not just this page.</li>
+              <li><code>location</code> is the city, or the raw location where no city
+                could be read. <code>posted</code> falls back to when Muster first saw
+                the role.</li>
+              <li><code>salary_min</code>, <code>salary_max</code> and
+                <code>salary_currency</code> appear only when the employer published a
+                band. Usually they are absent.</li>
+            </ul>
+          </div>
+          <div class="op-side">
+            <div class="xcard" data-copy data-send>
+              <div class="xhead"><span class="verb">POST</span><span class="path">/mcp &middot; tools/call</span></div>
+              <pre><code class="json">{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "search_roles",
+    "arguments": {
+      "q": "dbt", "city": "Melbourne", "limit": 1
+    }
+  }
+}</code></pre>
+            </div>
+            <div class="xcard">
+              <div class="xhead"><span class="verb">RESULT</span><span class="path">content[0].text</span></div>
+              <pre><code class="json">{
+  "total": 4,
+  "scope": "open data/analytics/ML roles in Australia",
+  "offset": 0,
+  "results": [
+    {
+      "id": "smartrecruiters:carsales:744000149506190",
+      "title": "Senior Data Engineer - Data Platform &amp; Engineering",
+      "company": "carsales",
+      "location": "Melbourne",
+      "remote": "hybrid",
+      "posted": "2026-09-15",
+      "apply_url": "https://jobs.smartrecruiters.com/carsales/744000149506190",
+      "ats": "smartrecruiters"
+    }
+  ],
+  "snapshot": {"...": "as above"}
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card blueprint tool" id="get_role">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="op">
+          <div class="op-main">
+            <h2><code>get_role</code></h2>
+            <p>One role, by the <code>id</code> that <code>search_roles</code> returns.</p>
+            <h6>Arguments</h6>
+            <ul class="params">
+              <li><div class="sig"><code>id</code><span class="t">string</span><span class="req">required</span></div>
+                <p><code>&lt;ats&gt;:&lt;board_token&gt;:&lt;external_id&gt;</code></p></li>
+            </ul>
+            <p>Returns the same fields as a search result, plus four more:</p>
+            <ul>
+              <li><code>is_data_role</code>: whether the title passes the
+                <a href="#slice">data-slice rule</a>.</li>
+              <li><code>skills</code>: the closed vocabulary the r&eacute;sum&eacute;
+                matcher scores against (<code>sk</code>).</li>
+              <li><code>vocabulary</code>: the rare words from the ad, which is what
+                <code>q</code> searches (<code>kw</code>).</li>
+              <li><code>identical_openings_at_this_employer</code>: how many open roles
+                that employer&rsquo;s board has with exactly this title. Muster
+                publishes this instead of a made-up match score. Eight identical
+                openings means a team is being hired, which is worth knowing.</li>
+            </ul>
+            <p>An unknown id is not an error. It comes back as a result that says
+              so, and suggests searching again.</p>
+          </div>
+          <div class="op-side">
+            <div class="xcard" data-copy data-send>
+              <div class="xhead"><span class="verb">POST</span><span class="path">/mcp &middot; tools/call</span></div>
+              <pre><code class="json">{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "get_role",
+    "arguments": {
+      "id": "smartrecruiters:carsales:744000149506190"
+    }
+  }
+}</code></pre>
+            </div>
+            <div class="xcard">
+              <div class="xhead"><span class="verb">RESULT</span><span class="path">found</span></div>
+              <pre><code class="json">{
+  "id": "smartrecruiters:carsales:744000149506190",
+  "title": "Senior Data Engineer - Data Platform &amp; Engineering",
+  "...": "the search_roles fields",
+  "is_data_role": true,
+  "identical_openings_at_this_employer": 1,
+  "skills": ["python", "sql", "snowflake", "postgres", "dbt", "etl", "git"],
+  "vocabulary": ["ai-augmented", "anchor", "..."]
+}</code></pre>
+            </div>
+            <div class="xcard">
+              <div class="xhead"><span class="verb">RESULT</span><span class="path">unknown id</span></div>
+              <pre><code class="json">{
+  "error": "no open role with that id in this snapshot",
+  "hint": "It may have been filled and left the index, or the id may be from an older export. Search again rather than assuming it is closed."
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card blueprint tool" id="index_health">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="op">
+          <div class="op-main">
+            <h2><code>index_health</code></h2>
+            <p>No arguments. What the index holds and how fresh it is: open counts,
+              counts across the whole index worldwide (<code>index_totals</code>),
+              boards watched, the last sweep, the age of the oldest board, health per
+              ATS, and a <code>caveats</code> array.</p>
+            <p><code>caveats</code> states the coverage limits in plain words. Use it
+              to answer questions about how far Muster can be trusted, rather than
+              guessing.</p>
+            <p>Read <code>boards_failed</code> and each vendor&rsquo;s
+              <code>incomplete</code> together. A failed board was not fetched at all.
+              An incomplete one was fetched but returned fewer roles than the vendor
+              said it had, and an incomplete board closes nothing until it comes back
+              whole.</p>
+          </div>
+          <div class="op-side">
+            <div class="xcard" data-copy data-send>
+              <div class="xhead"><span class="verb">POST</span><span class="path">/mcp &middot; tools/call</span></div>
+              <pre><code class="json">{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {"name": "index_health", "arguments": {}}
+}</code></pre>
+            </div>
+            <div class="xcard">
+              <div class="xhead"><span class="verb">RESULT</span><span class="path">content[0].text</span></div>
+              <pre><code class="json">{
+  "open_roles_australia": 9160,
+  "open_data_roles_australia": 485,
+  "index_totals": {
+    "jobs": 334121, "open": 311210, "au_open": 9160,
+    "closed": 22911, "boards": 911, "vendors": 7
+  },
+  "boards_watched": 925,
+  "last_sweep": "2026-09-18T22:19:51.092042+00:00",
+  "oldest_board_age_hours": 97.32841436,
+  "boards_failed": 11,
+  "by_ats": [
+    {
+      "vendor": "workday", "boards": 536, "ok": 500, "failed": 5,
+      "incomplete": 31, "fetched": 248068, "new": 24423, "closed": 10304,
+      "reopened": 176, "last_run": "2026-09-18T22:19:51.092042+00:00",
+      "oldest_run": "2026-09-15T02:18:06.373022+00:00"
+    }
+  ],
+  "roles_with_no_description": 473,
+  "caveats": ["...three entries naming the coverage limits..."]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card blueprint tool" id="match_resume">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="op">
+          <div class="op-main">
+            <h2><code>match_resume</code></h2>
+            <p>Ranks open roles against a r&eacute;sum&eacute;, with the same scoring
+              the site uses:</p>
+            <ul>
+              <li>a closed list of skills, each worth more the rarer it is across the
+                index;</li>
+              <li>a match on the role title;</li>
+              <li>a penalty where the r&eacute;sum&eacute; states a level two or more
+                steps below the role&rsquo;s.</li>
+            </ul>
+            <h6>Arguments</h6>
+            <ul class="params">
+              <li><div class="sig"><code>resume</code><span class="t">string</span><span class="req">required</span></div>
+                <p>Plain text, up to 60,000 characters.</p></li>
+              <li><div class="sig"><code>scope</code><span class="t">data | all</span></div>
+                <p>Default <code>data</code>.</p></li>
+              <li><div class="sig"><code>limit</code><span class="t">integer</span></div>
+                <p>1 to 100. Default 25.</p></li>
+            </ul>
+            <ul>
+              <li><code>read_from_resume</code> is what the matcher took from the text,
+                so a bad ranking can be traced rather than guessed at.
+                <code>level</code> runs from 0 (graduate) to 5 (head of, director),
+                and is <code>null</code> when the r&eacute;sum&eacute; states no
+                level.</li>
+              <li><b>This ranks and never hides.</b> <code>total_ranked</code> is every
+                role in scope and <code>matched</code> is how many scored above zero.
+                A role with nothing in common sinks to the bottom with an empty
+                <code>matched_on</code>; it is not removed. Ties go to the newest.</li>
+              <li><code>title_match</code> is the role title from the
+                r&eacute;sum&eacute; found in the job&rsquo;s title, or
+                <code>null</code>.</li>
+              <li><code>relative_score</code> compares each role with the best match
+                in this response. It is not a probability, and it cannot be compared
+                across calls. Muster has never seen an application, an interview or a
+                hire, so it has no number for those.</li>
+              <li><code>stretch: true</code> marks a role two or more levels above the
+                r&eacute;sum&eacute;. It is shown rather than hidden, because a reader
+                may want it.</li>
+              <li><code>unrankable_roles_in_index</code> counts roles with no
+                description to score. They are in the index but cannot rank.</li>
+              <li>Text with no known skill or role title gets an error instead of a
+                made-up order.</li>
+            </ul>
+
+            <h3 id="resume-privacy">Sending a r&eacute;sum&eacute; to a server</h3>
+            <p>The <a href="./">roles page</a> ranks in your browser: nothing is
+              uploaded. This endpoint is a server, so <code>match_resume</code> always
+              receives the text. It scores it in memory for that one call and does not
+              store or log it, but that is a promise about the server, not something
+              you can check. Sending a request from this page is the same call, so
+              the text goes to the server there too. If the difference matters to
+              you, use the site, or run the ranking yourself from
+              <code>jobs-data.json</code> and the vocabulary in
+              <code>manifest.json</code>.</p>
+          </div>
+          <div class="op-side">
+            <div class="xcard" data-copy data-send
+                 data-note="Sends this text to the server, which scores it and keeps nothing.">
+              <div class="xhead"><span class="verb">POST</span><span class="path">/mcp &middot; tools/call</span></div>
+              <pre><code class="json">{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "match_resume",
+    "arguments": {
+      "resume": "Analytics engineer, five years. SQL, dbt, Snowflake, Python.",
+      "limit": 1
+    }
+  }
+}</code></pre>
+            </div>
+            <div class="xcard">
+              <div class="xhead"><span class="verb">RESULT</span><span class="path">ranked</span></div>
+              <pre><code class="json">{
+  "read_from_resume": {
+    "skills": ["python", "sql", "snowflake", "dbt"],
+    "roles": ["analytics engineer"],
+    "level": 3
+  },
+  "total_ranked": 485,
+  "matched": 184,
+  "unrankable_roles_in_index": 473,
+  "results": [
+    {
+      "id": "smartrecruiters:carsales:744000149506190",
+      "title": "Senior Data Engineer - Data Platform &amp; Engineering",
+      "...": "the search_roles fields",
+      "matched_on": ["dbt", "snowflake", "sql", "python"],
+      "title_match": null,
+      "stretch": false,
+      "relative_score": 1
+    }
+  ],
+  "note": "Ranked, never filtered. ..."
+}</code></pre>
+            </div>
+            <div class="xcard">
+              <div class="xhead"><span class="verb">RESULT</span><span class="path">nothing rankable</span></div>
+              <pre><code class="json">{
+  "error": "nothing rankable in that text",
+  "hint": "No known skill or role title was found. The vocabulary is a closed list of data/analytics tools and titles; a résumé from another field will not rank, and a made-up ordering would be worse than this error.",
+  "vocabulary_size": 72
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card blueprint" id="worker">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <h2>How it runs</h2>
+        <p>A Cloudflare Worker answers <code>/mcp</code> on this hostname, and every
+          other path goes to the static site. The Worker has no database: it reads
+          the published files above, caches them against the CDN&rsquo;s ETag, and
+          filters in memory. Because it reads the site&rsquo;s own data, it cannot
+          disagree with the site.</p>
+        <p>Source: <a href="https://github.com/sidharthjoly/Muster/tree/main/mcp"><code>mcp/</code></a>
+          on GitHub.</p>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>
+    <div class="in">
+      <span class="brand">MUSTER</span>
+      <span>Read from employers&rsquo; own hiring systems. Apply links go to the employer.</span>
+      <a href="weekly.xml">Weekly roundup (RSS)</a>
+      <a class="r" href="https://github.com/sidharthjoly/Muster">Source on GitHub</a>
+    </div>
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const n = v => (v ?? 0).toLocaleString();
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+// JSON examples: string and literal values in the deep accent, keys left in
+// ink. A string followed by a colon is a key. Works on the text, so the
+// entities in the markup are decoded once and re-escaped piece by piece.
+const TOKEN = /("(?:\\.|[^"\\])*")(\s*:)?|\b(?:true|false|null)\b|-?\b\d+(?:\.\d+)?\b/g;
+function paint(code) {
+  const src = code.textContent;
+  let html = '', last = 0;
+  for (const m of src.matchAll(TOKEN)) {
+    html += esc(src.slice(last, m.index));
+    html += m[2] ? esc(m[1]) + esc(m[2])
+      : `<span class="${m[1] ? 'tok-s' : 'tok-v'}">${esc(m[0])}</span>`;
+    last = m.index + m[0].length;
+  }
+  code.innerHTML = html + esc(src.slice(last));
+}
+document.querySelectorAll('code.json').forEach(paint);
+
+// Sending a request from the page. The full address rather than `/mcp`: the
+// Worker answers CORS preflights for any origin, so the same call works from
+// the published page, from muster.web and from a file:// open, and a copy of
+// this page served anywhere else still reaches the one real endpoint. The
+// request is exactly what the card shows, edited or not.
+const MCP = 'https://muster.sidharthjoly.com/mcp';
+// Indented JSON, with short lists of plain values kept on one line the way
+// the example cards write them: `"skills": ["python", "sql"]`, not a line
+// apiece. Items never contain a raw newline, so splitting on one is safe.
+const PRIM = String.raw`(?:"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null)`;
+const FLAT = new RegExp(String.raw`\[\s*(${PRIM}(?:,\s*${PRIM})*)\s*\]`, 'g');
+const pretty = o => JSON.stringify(o, null, 2).replace(FLAT, (all, items) => {
+  const line = items.split(/,\s*\n\s*/).join(', ');
+  return line.length <= 60 ? `[${line}]` : all;
+});
+const NOT_HERE = 'The MCP server could not be reached. Check the connection and '
+  + 'send it again; the request above has not changed.';
+function answer(card, stat, text, isJson) {
+  let live = card.nextElementSibling;
+  if (!live || !live.classList.contains('live')) {
+    live = document.createElement('div');
+    live.className = 'xcard live';
+    live.setAttribute('aria-live', 'polite');
+    live.innerHTML = '<div class="xhead"><span class="verb">RESULT</span>'
+      + '<span class="path">live</span><span class="stat"></span></div><pre><code></code></pre>';
+    card.after(live);
+  }
+  live.querySelector('.stat').textContent = stat;
+  const code = live.querySelector('code');
+  code.className = isJson ? 'json' : '';
+  code.textContent = text;
+  if (isJson) paint(code);
+}
+async function send(card, btn, hint) {
+  const note = card.dataset.note || 'Edit the request, then send it.';
+  let body;
+  try {
+    body = JSON.parse(card.querySelector('pre code').textContent);
+  } catch (e) {
+    hint.textContent = `That is not valid JSON: ${e.message}`;
+    hint.classList.add('bad');
+    return;
+  }
+  hint.textContent = note;
+  hint.classList.remove('bad');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  const t0 = performance.now();
+  try {
+    const r = await fetch(MCP, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json',
+                 'Accept': 'application/json, text/event-stream' },
+      body: JSON.stringify(body),
+    });
+    const raw = await r.text();
+    const ms = Math.round(performance.now() - t0);
+    // One server-sent event: the JSON is on its `data:` lines.
+    const data = raw.split('\n').filter(l => l.startsWith('data:'))
+      .map(l => l.slice(5)).join('\n') || raw;
+    let msg;
+    try { msg = JSON.parse(data); } catch {
+      // Not JSON: something other than the Worker answered the POST.
+      return answer(card, `${r.status} · ${ms} ms`, r.ok ? raw : NOT_HERE, false);
+    }
+    if (!msg || typeof msg !== 'object' || !('result' in msg || 'error' in msg)) {
+      // JSON, but not a JSON-RPC answer — something in front of the Worker
+      // refusing the request. Its own words say more than a generic line.
+      return answer(card, `${r.status} · ${ms} ms`, pretty(msg), true);
+    }
+    if (msg.error) {
+      return answer(card, `${r.status} · JSON-RPC error`, pretty(msg.error), true);
+    }
+    const text = msg.result?.content?.[0]?.text;
+    if (msg.result?.isError) {
+      return answer(card, `${r.status} · tool error`, text ?? pretty(msg.result), false);
+    }
+    try {
+      answer(card, `${r.status} · ${ms} ms`, pretty(JSON.parse(text)), true);
+    } catch {
+      answer(card, `${r.status} · ${ms} ms`, text ?? pretty(msg.result), text == null);
+    }
+  } catch {
+    answer(card, 'not sent', NOT_HERE, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send request';
+  }
+}
+for (const card of document.querySelectorAll('.xcard[data-send]')) {
+  const code = card.querySelector('pre code');
+  const original = code.textContent;
+  // plaintext-only keeps pasted text plain; older engines reject the value.
+  try { code.contentEditable = 'plaintext-only'; } catch { code.contentEditable = 'true'; }
+  if (code.contentEditable !== 'plaintext-only') code.contentEditable = 'true';
+  code.spellcheck = false;
+  code.setAttribute('aria-label', 'Request body, editable');
+  const foot = document.createElement('div');
+  foot.className = 'xfoot';
+  foot.innerHTML = '<span class="hint"></span>'
+    + '<button type="button" class="btn btn-secondary" hidden>Reset</button>'
+    + '<button type="button" class="btn btn-primary">Send request</button>';
+  const [hint, reset, btn] = [foot.children[0], foot.children[1], foot.children[2]];
+  hint.textContent = card.dataset.note || 'Edit the request, then send it.';
+  code.addEventListener('input', () => { reset.hidden = false; });
+  reset.addEventListener('click', () => {
+    code.textContent = original;
+    paint(code);
+    reset.hidden = true;
+    hint.textContent = card.dataset.note || 'Edit the request, then send it.';
+    hint.classList.remove('bad');
+  });
+  btn.addEventListener('click', () => send(card, btn, hint));
+  card.append(foot);
+}
+
+// Copy buttons in the header strip of the cards a reader pastes from. The
+// clipboard API is refused on a file:// open and in some embeds, so the
+// fallback selects the text for a manual copy rather than failing silently.
+for (const card of document.querySelectorAll('.xcard[data-copy]')) {
+  const pre = card.querySelector('pre');
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'btn btn-secondary copy';
+  b.textContent = 'Copy';
+  b.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(pre.textContent.trim());
+      b.textContent = 'Copied';
+    } catch {
+      const r = document.createRange();
+      r.selectNodeContents(pre);
+      getSelection().removeAllRanges();
+      getSelection().addRange(r);
+      b.textContent = 'Selected';
+    }
+    setTimeout(() => { b.textContent = 'Copy'; }, 1600);
+  });
+  card.querySelector('.xhead').append(b);
+}
+
+// Contents rail: mark the section being read — the last one whose top has
+// passed the upper third of the viewport, or the last section outright once
+// the page is scrolled to the end, since a short final section never gets
+// that high and would otherwise never be marked.
+const toc = new Map([...document.querySelectorAll('.toc a')]
+  .map(a => [a.hash.slice(1), a]));
+const secs = [...document.querySelectorAll('main section[id]')]
+  .filter(s => toc.has(s.id));
+let queued = false;
+function mark() {
+  queued = false;
+  const end = innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
+  let cur = secs[0];
+  for (const s of secs) if (s.getBoundingClientRect().top <= innerHeight / 3) cur = s;
+  if (end) cur = secs[secs.length - 1];
+  for (const a of toc.values()) a.removeAttribute('aria-current');
+  toc.get(cur.id).setAttribute('aria-current', 'location');
+}
+addEventListener('scroll', () => {
+  if (!queued) { queued = true; requestAnimationFrame(mark); }
+}, { passive: true });
+mark();
+
+// The live numbers, from the file this page documents. Served by muster.web
+// or opened from disk there is no data/v1/, and the page reads the same
+// without them: the chip and the "right now" line simply stay hidden.
+(async () => {
+  let m;
+  try {
+    const r = await fetch('data/v1/manifest.json');
+    if (!r.ok) return;
+    m = await r.json();
+  } catch { return; }
+  const at = new Date(m.generated_at);
+  if (isNaN(at)) return;
+  const when = at.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  const h = (Date.now() - at) / 36e5;
+  const ago = h < 1 ? 'under an hour ago'
+    : h < 48 ? `${Math.round(h)} hours ago` : `${Math.round(h / 24)} days ago`;
+  $('#swept-text').textContent = `Snapshot ${when}`;
+  $('#swept').hidden = false;
+  const data = m.jobs_data == null ? '' : `, ${n(m.jobs_data)} of them in the data slice`;
+  $('#now').textContent = `The current build is from ${when} (${ago}): `
+    + `${n(m.jobs)} open roles in Australia${data}.`;
+  $('#now').hidden = false;
+})();
+</script>
